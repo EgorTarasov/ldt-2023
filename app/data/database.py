@@ -9,6 +9,6 @@ from app.utils.settings import settings
 engine = create_engine(
     str(settings.DATABASE_URI)  # , connect_args={"check_same_thread": False}
 )
-SessionLocal = sessionmaker(autocommit=False, autoflush=True, bind=engine)
+SessionLocal = sessionmaker(autoflush=True, bind=engine)
 
 Base = declarative_base()

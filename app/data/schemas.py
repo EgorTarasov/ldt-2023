@@ -65,3 +65,32 @@ class User(UserBase):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+
+class FeedbackBase(BaseModel):
+    target_id: int
+    text: str
+
+
+class FeedbackCreate(FeedbackBase):
+    class Config:
+        schema_extra = {
+            "example": {
+                "target_id": 1,
+                "text": "Текст отзыва",
+            }
+        }
+
+
+class Feedback(FeedbackBase):
+    sender_id: int
+
+    class Config:
+        orm_mode = True
+        schema_extra = {
+            "example": {
+                "sender_id": 1,
+                "target_id": 2,
+                "text": "Текст отзыва",
+            }
+        }
