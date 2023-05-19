@@ -65,6 +65,9 @@ class Feedback(Base):
         "User", foreign_keys=[target_id], primaryjoin="User.id==Feedback.target_id"
     )
 
+    def __repr__(self):
+        return f"<Feedback(sender_id={self.sender_id}, target_id={self.target_id}, text={self.text})>"
+
 
 """
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey

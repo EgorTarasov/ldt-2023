@@ -93,6 +93,7 @@ async def get_user(
 ) -> schemas.User:
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
+
     db_user = await auth.get_current_user(db, access_token)
     log.debug(db_user)
     return schemas.User.from_orm(db_user)
@@ -106,6 +107,6 @@ async def update_user(
 ):
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    db_user = await auth.get_current_user(db, access_token)
+
+    db_user = await auth.get_current_user(db, access_token)  # нужно ли это тут?
     crud.update_user(db, user_data)
