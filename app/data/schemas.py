@@ -1,7 +1,8 @@
-from typing import List, Optional
+from typing import Optional, Any
 from datetime import date, datetime, time
 
-from pydantic import BaseModel, EmailStr, SecretStr
+
+from pydantic import BaseModel, EmailStr, SecretStr, Json, AnyHttpUrl
 
 
 class UserLogin(BaseModel):
@@ -79,6 +80,9 @@ class TokenData(BaseModel):
     email: Optional[str] = None
 
 
+# region Feedback
+
+
 class FeedbackBase(BaseModel):
     target_id: int
     text: str
@@ -108,6 +112,8 @@ class Feedback(FeedbackBase):
             }
         }
 
+
+# endregion
 
 # region Applcation
 
@@ -146,6 +152,106 @@ class InternApplication(InternApplicationBase):
                 "resume": "резюме",
                 "citizenship": "RU",
                 "graduation_date": "2000-01-01",
+            }
+        }
+
+
+# endregion
+
+
+# region Test
+
+
+class TestBase(BaseModel):
+    title: str
+    description: str
+
+
+class Test(TestBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+        schema_extra = {
+            "example": {"id": 1, "title": "Загаловок", "description": "описание"}
+        }
+
+
+# endregion Test
+
+
+# region Tag
+class TagBase(BaseModel):
+    name: str
+
+
+class TagCreate(TagBase):
+    class Config:
+        schema_extra = {"example": {"name": "Тэг"}}
+
+
+class Tag(TagBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+        schema_extra = {"example": {"id": 1, "name": "Тэг"}}
+
+
+# endregion Tag
+
+# region Vacancy
+
+
+class VacancyBase(BaseModel):
+    title: str
+    description: str
+    start_date: datetime
+    end_date: datetime
+    requirements: Optional[dict[str, Any]]
+    test: Optional[Test | AnyHttpUrl] = AnyHttpUrl("https://127.0.0.1", scheme="https")
+
+
+class VacancyCreate(VacancyBase):
+    tags: Optional[list[TagCreate]]
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "title": "Название вакансии",
+                "description": "Описание",
+                "start_date": datetime(2023, 6, 15, 0, 0, 0),
+                "end_date": datetime(2023, 6, 30, 0, 0, 0),
+                "tags": [
+                    {
+                        "name": "Стажер",
+                    },
+                    {
+                        "name": "Шахтер",
+                    },
+                ],
+                "requirements": {"some_requirement": "some_value"},
+                "test_url": "https://127.0.0.1",
+            }
+        }
+
+
+class Vacancy(VacancyBase):
+    id: Optional[int | None] = None
+    tags: list[Tag]
+    hr_id: int
+
+    class Config:
+        orm_mode = True
+        schema_extra = {
+            "example": {
+                "id": 1,
+                "title": "Название вакансии",
+                "description": "Описание",
+                "start_date": datetime(2023, 6, 15, 0, 0, 0),
+                "end_date": datetime(2023, 6, 30, 0, 0, 0),
+                "tags": ["Стажер", "Шахтер"],
+                "test": "https://127.0.0.1",
             }
         }
 

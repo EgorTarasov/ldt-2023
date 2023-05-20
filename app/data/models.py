@@ -1,6 +1,17 @@
 import datetime
-from sqlalchemy import Boolean, ForeignKey, Integer, String, DateTime, Date
+from sqlalchemy import (
+    Boolean,
+    ForeignKey,
+    Integer,
+    String,
+    DateTime,
+    Date,
+    Column,
+    Table,
+)
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship, mapped_column, Mapped
+import json
 
 from app.data.database import Base
 
@@ -36,6 +47,10 @@ class User(Base):
 
     enrolments = relationship("UserEnrolment", back_populates="user")
 
+    vacancies = relationship(
+        "Vacancy", back_populates="hr", primaryjoin="User.id==Vacancy.hr_id"
+    )
+
     intern_application = relationship(
         "InternApplication",
         back_populates="user",
@@ -53,6 +68,12 @@ class User(Base):
         back_populates="target",
         primaryjoin="User.id==Feedback.target_id",
     )
+
+    # vacany_enrolments = relationship(
+    #     "VacancyEnrolment",
+    #     back_populates="user",
+    #     primaryjoin="User.id==VacancyEnrolment.user_id",
+    # )
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, role_id={self.role_id})>"
@@ -118,3 +139,91 @@ class InternApplication(Base):
 
     def __repr__(self):
         return f"<InternApplication(id={self.id}, course={self.course}, education={self.education}, resume={self.resume}, citizenship={self.citizenship}, graduation_date={self.graduation_date})>"
+
+
+# class Vacancy_Tag(Base):
+#     __tablename__ = "vacancy_tag"
+
+#     tag_id: Mapped[int] = mapped_column(
+#         Integer, ForeignKey("tags.id"), primary_key=True
+#     )
+#     vacancy_id: Mapped[int] = mapped_column(Integer, ForeignKey("vacancies.id"))
+
+
+class Vacancy(Base):
+    __tablename__ = "vacancies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(String)
+    # test_id: Mapped[int] = mapped_column(Integer, ForeignKey("tests.id"))
+    hr_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    start_date: Mapped[datetime.datetime] = mapped_column(DateTime)
+    end_date: Mapped[datetime.datetime] = mapped_column(DateTime)
+    test: Mapped[str] = mapped_column(String)
+    requirements: Mapped[str] = mapped_column(JSON)
+
+    hr = relationship(
+        "User",
+        back_populates="vacancies",
+        primaryjoin="User.id==Vacancy.hr_id",
+    )
+
+    tags = relationship(
+        "Tag",
+        back_populates="vacancies",
+        secondary="vacancy_tags",
+    )
+
+    def __repr__(self):
+        return f"<Vacancy(id={self.id}, title={self.title}, description={self.description}, hr_id={self.hr_id}, start_date={self.start_date}, end_date={self.end_date}, test={self.test}, requirements={self.requirements})>"
+
+    # vacancy_enrolments = relationship(
+    #     "VacancyEnrolment",
+    #     back_populates="vacancy",
+    #     primaryjoin="Vacancy.id==VacancyEnrolment.vacany_id",
+    # )
+
+
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String, unique=True)
+
+    vacancies = relationship("Vacancy", back_populates="tags", secondary="vacancy_tags")
+
+    def __repr__(self):
+        return f"<Tag(id={self.id}, name={self.name})>"
+
+
+vacancy_tags = Table(
+    "vacancy_tags",
+    Base.metadata,
+    Column("tag_id", Integer, ForeignKey("vacancies.id")),
+    Column("vacancy_id", Integer, ForeignKey("tags.id")),
+)
+
+# class VacancyEnrolment(Base):
+#     __tablename__ = "vacancy_enrolments"
+
+#     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+#     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+#     vacany_id: Mapped[int] = mapped_column(Integer, ForeignKey("vacancies.id"))
+#     status: Mapped[str] = mapped_column(String)
+#     results: Mapped[dict] = mapped_column(JSONB)
+
+#     user = relationship(
+#         "User",
+#         back_populates="vacancy_enrolments",
+#         primaryjoin="User.id==VacancyEnrolment.user_id",
+#     )
+#     vacancy = relationship(
+#         "Vacancy",
+#         back_populates="vacancy_enrolments",
+#         primaryjoin="Vacancy.id==VacancyEnrolment.vacany_id",
+#     )
+
+
+# class Test(Base):
+#     __tablename__ = "tests"

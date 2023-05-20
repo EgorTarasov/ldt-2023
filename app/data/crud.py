@@ -132,3 +132,37 @@ def get_intern_application(user: models.User) -> models.InternApplication | None
 
 
 # endregion InternApplication
+
+# region Vacancy
+
+
+def create_vacancy(
+    db: Session, vacancy: schemas.VacancyCreate, hr: models.User
+) -> models.Vacancy:
+    tags = vacancy.tags
+    if tags is None:
+        tags = []
+
+    db_vacancy = models.Vacancy(
+        **vacancy.dict(
+            exclude={"tags"},
+        ),
+    )
+    db_vacancy.hr = hr
+    for t in tags:
+        # TODO: check if we create tag in other places
+        db_tag = db.query(models.Tag).filter(models.Tag.name == t.name).one_or_none()
+        if db_tag is None:
+            db_tag = models.Tag(**t.dict())
+            db.add(db_tag)
+            db.commit()
+            db.refresh(db_tag)
+        db_vacancy.tags.append(db_tag)
+
+    db.add(db_vacancy)
+    db.commit()
+    db.refresh(db_vacancy)
+    return db_vacancy
+
+
+# endregion Vacancy
