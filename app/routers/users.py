@@ -48,7 +48,6 @@ async def login(
     user_data: schemas.UserLogin,
     db: Annotated[Session, None] = Depends(get_db),
 ):
-    log.debug("Data")
     auth.authenticate_user(db, user_data)
     access_token = auth.create_access_token(data={"sub": user_data.email})
     response.set_cookie(
@@ -66,7 +65,7 @@ async def login(
             httponly=False,
             max_age=60 * 60 * 24 * 30,
         )
-    return {"message": "login success"}
+    return {f"message": "{access_token}"}
 
 
 @router.delete("/")

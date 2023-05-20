@@ -25,10 +25,20 @@ def create_user(db: Session, user: schemas.UserCreateHashed) -> models.User:
 
 
 def update_user(db: Session, user: schemas.User) -> models.User:
-    db_user = models.User(**user.dict())
-    db.add(db_user)
+    db_user = db.query(models.User).filter(models.User.id == user.id).one_or_none()
+    if db_user is None:
+        raise Exception("User not found")
+    db_user.email = user.email
+    db_user.fio = user.fio
+    db_user.phone = user.phone if user.phone else db_user.phone
+    db_user.role_id = user.role_id if user.role_id else db_user.role_id
+    db_user.birthday = user.birthday if user.birthday else db_user.birthday
+    db_user.gender = user.gender
+
+    db_user = db.merge(db_user)
     db.commit()
     db.refresh(db_user)
+
     return db_user
 
 
@@ -42,13 +52,13 @@ def get_all_feedbacks(
 
 
 def create_feedback(db: Session, feedback: schemas.Feedback) -> models.Feedback:
-    log.debug(f"Creating feedback: {feedback}")
+    # log.debug(f"Creating feedback: {feedback}")
     db_feedback = models.Feedback(**feedback.dict())
-    log.debug(f"Created feedback: {db_feedback}")
+    # log.debug(f"Created feedback: {db_feedback}")
     db.add(db_feedback)
     db.commit()
     db.refresh(db_feedback)
-    log.debug(f"Feedback from db: {db_feedback}")
+    # log.debug(f"Feedback from db: {db_feedback}")
     return db_feedback
 
 
@@ -85,3 +95,40 @@ def delete_feedback(db: Session, user: models.User, feedback_id: int) -> None:
 
 
 # endregion Feedback
+
+
+# region InternApplication
+
+
+def create_intern_application(
+    db: Session, application: schemas.InternApplication
+) -> models.InternApplication:
+    db_application = models.InternApplication(**application.dict())
+    db.add(db_application)
+    db.commit()
+    db.refresh(db_application)
+    return db_application
+
+
+def update_intern_application(
+    db: Session, user, application: schemas.InternApplication
+) -> models.InternApplication:
+    # FIXME: update with one line
+    db_application: models.InternApplication = user.intern_application
+    db_application.education = application.education
+    db_application.course = application.course
+    db_application.resume = application.resume
+    db_application.citizenship = application.citizenship
+    db_application.graduation_date = application.graduation_date
+
+    db_application = db.merge(db_application)
+    db.commit()
+    db.refresh(db_application)
+    return db_application
+
+
+def get_intern_application(user: models.User) -> models.InternApplication | None:
+    return user.intern_application
+
+
+# endregion InternApplication
