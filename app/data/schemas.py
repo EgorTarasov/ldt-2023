@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import date, datetime, time
 
 from pydantic import BaseModel, EmailStr, SecretStr
 
@@ -24,6 +24,7 @@ class UserBase(BaseModel):
     phone: Optional[str] = None
     fio: str
     gender: str
+    birthday: date
 
 
 class UserCreate(UserBase):
@@ -36,6 +37,7 @@ class UserCreate(UserBase):
                 "email": "test@test.com",
                 "phone": "+7 (999) 999-99-99",
                 "gender": "М",
+                "birthday": datetime.now().date(),
                 "fio": "Мисосов Михаил Михайлович",
                 "password": "test123456",
             }
@@ -62,6 +64,7 @@ class User(UserBase):
                 "phone": "+7 (999) 999-99-99",
                 "fio": "Мисосов Михаил Михайлович ",
                 "gender": "М",
+                "birthday": "2000-01-01",
                 "role_id": 0,
                 "first_access": datetime.now(),
                 "last_access": datetime.now(),
@@ -104,3 +107,47 @@ class Feedback(FeedbackBase):
                 "text": "Текст отзыва",
             }
         }
+
+
+# region Applcation
+
+
+class InternApplicationBase(BaseModel):
+    course: str  # TODO: add enum
+    education: str  # TODO: add enum
+    resume: str
+    citizenship: str
+    graduation_date: date
+
+
+class InternApplicationCreate(InternApplicationBase):
+    class Config:
+        schema_extra = {
+            "example": {
+                "course": "Сварщик",
+                "education": "Институт сварки",
+                "resume": "резюме",
+                "citizenship": "RU",
+                "graduation_date": date(2025, 1, 1),
+            }
+        }
+
+
+class InternApplication(InternApplicationBase):
+    id: Optional[int | None] = None
+
+    class Config:
+        orm_mode = True
+        schema_extra = {
+            "example": {
+                "id": 1,
+                "course": "Сварщик",
+                "education": "Институт сварки",
+                "resume": "резюме",
+                "citizenship": "RU",
+                "graduation_date": "2000-01-01",
+            }
+        }
+
+
+# endregion

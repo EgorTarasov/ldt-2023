@@ -1,8 +1,8 @@
 from typing import Annotated
-from fastapi import APIRouter, Cookie, Depends, HTTPException, status, Response, Request
+from fastapi import APIRouter, Cookie, Depends, status, Response, Request
 from sqlalchemy.orm import Session
 from app.data import crud, models, schemas
-from app.dependencies import get_db
+from app.dependencies import get_db, current_user
 from app.service import auth
 from app.utils.settings import settings
 from app.utils.logging import log
@@ -48,7 +48,6 @@ async def login(
     user_data: schemas.UserLogin,
     db: Annotated[Session, None] = Depends(get_db),
 ):
-    log.debug("Data")
     auth.authenticate_user(db, user_data)
     access_token = auth.create_access_token(data={"sub": user_data.email})
     response.set_cookie(
@@ -66,7 +65,7 @@ async def login(
             httponly=False,
             max_age=60 * 60 * 24 * 30,
         )
-    return {"message": "login success"}
+    return {f"message": "{access_token}"}
 
 
 @router.delete("/")
@@ -88,25 +87,17 @@ async def logout(
 
 @router.get("/", response_model=schemas.User)
 async def get_user(
-    access_token: str | None = Cookie(None),
-    db: Session = Depends(get_db),
+    db_user: models.User = Depends(current_user),
 ) -> schemas.User:
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    db_user = await auth.get_current_user(db, access_token)
     log.debug(db_user)
     return schemas.User.from_orm(db_user)
 
 
-@router.put("/")
+@router.put("/", response_model=schemas.User)
 async def update_user(
     user_data: schemas.User,
-    access_token: str | None = Cookie(None),
     db: Session = Depends(get_db),
-):
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+) -> schemas.User:
+    db_user = crud.update_user(db, user_data)
 
-    db_user = await auth.get_current_user(db, access_token)  # нужно ли это тут?
-    crud.update_user(db, user_data)
+    return schemas.User.from_orm(db_user)
