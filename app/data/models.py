@@ -69,37 +69,6 @@ class Feedback(Base):
         return f"<Feedback(sender_id={self.sender_id}, target_id={self.target_id}, text={self.text})>"
 
 
-"""
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship, scoped_session, sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-
-engine = create_engine(u'sqlite:///:memory:', echo=True)
-session = scoped_session(sessionmaker(bind=engine))
-Base = declarative_base()
-
-#The business case here is that a company can be a stakeholder in another company.
-class Company(Base):
-    __tablename__ = 'company'
-    id = Column(Integer, primary_key=True)
-    name = Column(String(50), nullable=False)
-
-class Stakeholder(Base):
-    __tablename__ = 'stakeholder'
-    id = Column(Integer, primary_key=True)
-    company_id = Column(Integer, ForeignKey('company.id'), nullable=False)
-    stakeholder_id = Column(Integer, ForeignKey('company.id'), nullable=False)
-    company = relationship("Company", foreign_keys=[company_id])
-    stakeholder = relationship("Company", foreign_keys=[stakeholder_id])
-
-Base.metadata.create_all(engine)
-
-# simple query test
-q1 = session.query(Company).all()
-q2 = session.query(Stakeholder).all()
-"""
-
-
 class Event(Base):
     __tablename__ = "events"
 

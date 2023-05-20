@@ -1,17 +1,26 @@
 from typing import List, Optional
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, SecretStr
 
 
 class UserLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
     stay_loggedin: Optional[bool] = False
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "email": "test@test.com",
+                "password": "test123456",
+                "stay_loggedin": False,
+            }
+        }
+
 
 class UserBase(BaseModel):
-    email: str
+    email: EmailStr
     phone: Optional[str] = None
     fio: str
     gender: str
@@ -83,6 +92,7 @@ class FeedbackCreate(FeedbackBase):
 
 
 class Feedback(FeedbackBase):
+    id: Optional[int | None] = None
     sender_id: int
 
     class Config:
