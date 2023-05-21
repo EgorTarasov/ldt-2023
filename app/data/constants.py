@@ -21,3 +21,8 @@ class UserRole(int, Enum):
 class FeedbackType(str, Enum):
     received = "received"
     sent = "sent"
+
+
+class MailingType(str, Enum):
+    received = "received"
+    sent = "sent"

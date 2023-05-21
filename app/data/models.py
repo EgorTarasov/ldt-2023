@@ -11,7 +11,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship, mapped_column, Mapped
-import json
 
 from app.data.database import Base
 
@@ -56,6 +55,13 @@ class User(Base):
         back_populates="user",
         primaryjoin="User.id==InternApplication.id",
         uselist=False,
+    )
+
+    recieved_mailings = relationship(
+        "Mailing", back_populates="target", primaryjoin="User.id==Mailing.target_id"
+    )
+    sent_mailings = relationship(
+        "Mailing", back_populates="sender", primaryjoin="User.id==Mailing.sender_id"
     )
 
     recieved_feedbacks = relationship(
@@ -103,7 +109,7 @@ class Event(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String)
-    date_time: Mapped[datetime.date] = mapped_column(Date)
+    start_time: Mapped[datetime.datetime] = mapped_column(DateTime)
 
     enrolments = relationship("UserEnrolment", back_populates="event")
 
@@ -227,3 +233,23 @@ vacancy_tags = Table(
 
 # class Test(Base):
 #     __tablename__ = "tests"
+
+
+class Mailing(Base):
+    __tablename__ = "mailings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    sender_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    target_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    time_sent: Mapped[datetime.datetime] = mapped_column(DateTime)
+    subject: Mapped[str] = mapped_column(String)
+    message: Mapped[str] = mapped_column(String)
+
+    sender = relationship(
+        "User", back_populates="sent_mailings", primaryjoin="User.id==Mailing.sender_id"
+    )
+    target = relationship(
+        "User",
+        back_populates="recieved_mailings",
+        primaryjoin="User.id==Mailing.target_id",
+    )

@@ -257,3 +257,81 @@ class Vacancy(VacancyBase):
 
 
 # endregion
+
+
+# region Event
+
+
+# class EventBase(BaseModel):
+#     title: str
+#     start_time: datetime
+
+
+# class EventCreate(EventBase):
+#     class Config:
+#         schema_extra = {
+#             "example": {
+#                 "title": "Название события",
+#                 "start_time": datetime(2023, 6, 15, 0, 0, 0),
+#             }
+#         }
+
+
+# class Event(EventBase):
+#     id: Optional[int | None] = None
+
+#     class Config:
+#         orm_mode = True
+#         schema_extra = {
+#             "example": {
+#                 "id": 1,
+#                 "title": "Название события",
+#                 "start_time": datetime(2023, 6, 15, 0, 0, 0),
+#             }
+#         }
+
+
+# endregion Event
+
+# region Mailing
+
+
+class MailingBase(BaseModel):
+    target_id: int | None
+    subject: str
+    message: str
+    time_sent: datetime = datetime.now()
+
+
+class MailingCreate(MailingBase):
+    target_email: EmailStr | None
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "target_id": 2,
+                "subject": "Тема письма",
+                "message": "Сообщение",
+                "target_email": "test1@test.com",
+            },
+        }
+
+
+class Mailing(MailingBase):
+    id: Optional[int | None] = None
+    sender_id: int
+
+    class Config:
+        orm_mode = True
+        schema_extra = {
+            "example": {
+                "sender_id": 1,
+                "target_id": 2,
+                "subject": "Тема письма",
+                "message": "Сообщение",
+                "target_email": "test1@test.com",
+            }
+        }
+
+
+# endregion Mailing

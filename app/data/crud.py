@@ -166,3 +166,49 @@ def create_vacancy(
 
 
 # endregion Vacancy
+
+# region Mailing
+
+
+def create_mailing(
+    db: Session,
+    mailing: schemas.MailingCreate,
+    sender: models.User,
+    target: models.User,
+) -> models.Mailing:
+    db_mailing = models.Mailing(**mailing.dict(exclude={"target_email"}))
+
+    db_mailing.sender = sender
+    db_mailing.target = target
+
+    db.add(db_mailing)
+    db.commit()
+    db.refresh(db_mailing)
+    return db_mailing
+
+
+def get_sent_mailings(
+    db: Session, db_user: models.User, limit: int, offset: int
+) -> list[models.Mailing] | None:
+    return (
+        db.query(models.Mailing)
+        .filter(models.Mailing.sender_id == db_user.id)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+
+def get_recieved_mailings(
+    db: Session, db_user: models.User, limit: int, offset: int
+) -> list[models.Mailing] | None:
+    return (
+        db.query(models.Mailing)
+        .filter(models.Mailing.target_id == db_user.id)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+
+# endregion Mailing
