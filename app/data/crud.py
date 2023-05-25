@@ -1,3 +1,4 @@
+from sqlalchemy import func, text, desc, or_
 from sqlalchemy.orm import Session
 from app.utils.logging import log
 
@@ -134,6 +135,76 @@ def get_intern_application(user: models.User) -> models.InternApplication | None
 # endregion InternApplication
 
 # region Vacancy
+"""
+likes = db.Table('likes',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+    db.Column('post_id', db.Integer, db.ForeignKey('post.id'))
+)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(20))
+
+    def __repr__(self):
+        return "<User('%s')>" % self.username
+
+class Post(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255))
+
+    likes = db.relationship('User', secondary = likes,
+        backref = db.backref('posts', lazy='dynamic'))
+
+    def __repr__(self):
+        return "<Post('%s')>" % self.title
+"""
+
+
+def get_all_tags(db: Session) -> list[tuple[str, int]]:
+    # get ten most popular tags
+    data = (
+        db.query(models.Tag.name, func.count(models.Tag.name).label("count"))
+        .join(models.Vacancy.tags)
+        .group_by(models.Tag.name)
+        .order_by(desc("count"))
+        .limit(10)
+        .all()
+    )
+    log.debug(f"tags: {data}")
+
+    return [tuple(i) for i in data]
+
+
+def get_all_cities(db: Session) -> list[str] | None:
+    # get ten most popular cities in vacancies by splitted city field by comma
+    data = (
+        db.query(
+            func.split_part(models.Vacancy.address, ",", 1).label("city"),
+            func.count(func.split_part(models.Vacancy.address, ",", 1)).label("count"),
+        )
+        .group_by("city")
+        .order_by(desc("count"))
+        .limit(10)
+        .all()
+    )
+    log.debug(f"cities: {data}")
+    return [i[0] for i in data]
+
+
+def get_all_organisations(db: Session) -> list[str] | None:
+    # get ten most popular organisations in vacancies
+    data = (
+        db.query(
+            models.Vacancy.organisation,
+            func.count(models.Vacancy.organisation).label("count"),
+        )
+        .group_by(models.Vacancy.organisation)
+        .order_by(desc("count"))
+        .limit(10)
+        .all()
+    )
+    log.debug(f"organisations: {data}")
+    return [i[0] for i in data]
 
 
 def create_vacancy(
@@ -163,6 +234,44 @@ def create_vacancy(
     db.commit()
     db.refresh(db_vacancy)
     return db_vacancy
+
+
+def get_vacancies(
+    db: Session, filters: schemas.VacancyFilters, offset: int, limit: int
+) -> list[models.Vacancy]:
+
+    data = filters.dict()
+
+    log.debug(f"filters: {data}")
+    if data["organisations"] is None:
+        data["organisations"] = []
+    if data["tags"] is None:
+        data["tags"] = []
+
+    if not any(data.values()):
+        return db.query(models.Vacancy).offset(offset).limit(limit).all()
+    db_vacancies = (
+        db.query(models.Vacancy)
+        .join(models.Vacancy.tags)
+        .filter(
+            or_(
+                models.Tag.name.in_(data["tags"]),
+                models.Vacancy.organisation.in_(data["organisations"]),
+                models.Vacancy.address.ilike(f"%{data['city']}%"),
+            )
+        )
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    log.debug(f"vacancies: {db_vacancies}")
+    return db_vacancies
+
+
+def delete_vacancy(db: Session, vacancy_id: int):
+    db.query(models.Vacancy).filter(models.Vacancy.id == vacancy_id).delete()
+    db.commit()
 
 
 # endregion Vacancy

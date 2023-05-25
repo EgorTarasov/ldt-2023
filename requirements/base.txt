@@ -6,4 +6,6 @@ sqlalchemy
 python-jose
 passlib
 bcrypt
+iso3166
+jinja2
 pydantic[email]

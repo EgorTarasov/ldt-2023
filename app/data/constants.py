@@ -26,3 +26,9 @@ class FeedbackType(str, Enum):
 class MailingType(str, Enum):
     received = "received"
     sent = "sent"
+
+
+class MailingTemplate(str, Enum):
+    event_info = "app/templates/event_info.html"
+    event_reminder = "app/templates/event_reminder.html"
+    intern_invite = "app/templates/intern_invite.html"

@@ -12,6 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 
+from app.data import schemas
 from app.data.database import Base
 
 
@@ -86,6 +87,15 @@ class User(Base):
 
 
 class Feedback(Base):
+    """Отзывы о пользователях из модуля "обратная связь"
+
+    Args:
+        Base (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
     __tablename__ = "feedback"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -128,6 +138,11 @@ class UserEnrolment(Base):
 
 
 class InternApplication(Base):
+    """
+    Модель заявки на стажировку
+    Модуль «Заявки на стажировку»
+    """
+
     __tablename__ = "intern_applications"
 
     id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), primary_key=True)
@@ -146,6 +161,13 @@ class InternApplication(Base):
     def __repr__(self):
         return f"<InternApplication(id={self.id}, course={self.course}, education={self.education}, resume={self.resume}, citizenship={self.citizenship}, graduation_date={self.graduation_date})>"
 
+    @property
+    def rating(requirements: schemas.VacancyRequirementsBase) -> float:
+        """
+        Расчет рейтинга заявки на стажировку, проверяем гражданстов РФ, закончил 3 курс бакалавриата, имеет опыт работы (модуль "Заявки на стажировку")
+        """
+        raise NotImplementedError
+
 
 # class Vacancy_Tag(Base):
 #     __tablename__ = "vacancy_tag"
@@ -157,6 +179,10 @@ class InternApplication(Base):
 
 
 class Vacancy(Base):
+    """
+    Модель вакансии для Кадров (Модуль «Потребность в стажерах»)
+    """
+
     __tablename__ = "vacancies"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -167,9 +193,14 @@ class Vacancy(Base):
     start_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     end_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     test: Mapped[str] = mapped_column(String)
-    requirements: Mapped[str] = mapped_column(JSON)
+    requirements: Mapped[schemas.VacancyRequirementsSpecializations] = mapped_column(
+        JSON
+    )
+    organisation: Mapped[str] = mapped_column(String)
+    coordinates: Mapped[str] = mapped_column(String)  # type str = "lat,long"
+    address: Mapped[str] = mapped_column(String)  # type str = "город,улица,дом"
 
-    hr = relationship(
+    hr = relationship(  # у нас это человек из колонки "Блок" таблицы "Комплексы правительства москвы"
         "User",
         back_populates="vacancies",
         primaryjoin="User.id==Vacancy.hr_id",
