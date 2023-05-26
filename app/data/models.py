@@ -11,8 +11,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship, mapped_column, Mapped
-import json
 
+from app.data import schemas
 from app.data.database import Base
 
 
@@ -58,6 +58,13 @@ class User(Base):
         uselist=False,
     )
 
+    recieved_mailings = relationship(
+        "Mailing", back_populates="target", primaryjoin="User.id==Mailing.target_id"
+    )
+    sent_mailings = relationship(
+        "Mailing", back_populates="sender", primaryjoin="User.id==Mailing.sender_id"
+    )
+
     recieved_feedbacks = relationship(
         "Feedback",
         back_populates="sender",
@@ -80,6 +87,15 @@ class User(Base):
 
 
 class Feedback(Base):
+    """Отзывы о пользователях из модуля "обратная связь"
+
+    Args:
+        Base (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
     __tablename__ = "feedback"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -103,7 +119,7 @@ class Event(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String)
-    date_time: Mapped[datetime.date] = mapped_column(Date)
+    start_time: Mapped[datetime.datetime] = mapped_column(DateTime)
 
     enrolments = relationship("UserEnrolment", back_populates="event")
 
@@ -122,6 +138,11 @@ class UserEnrolment(Base):
 
 
 class InternApplication(Base):
+    """
+    Модель заявки на стажировку
+    Модуль «Заявки на стажировку»
+    """
+
     __tablename__ = "intern_applications"
 
     id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), primary_key=True)
@@ -140,6 +161,13 @@ class InternApplication(Base):
     def __repr__(self):
         return f"<InternApplication(id={self.id}, course={self.course}, education={self.education}, resume={self.resume}, citizenship={self.citizenship}, graduation_date={self.graduation_date})>"
 
+    @property
+    def rating(requirements: schemas.VacancyRequirementsBase) -> float:
+        """
+        Расчет рейтинга заявки на стажировку, проверяем гражданстов РФ, закончил 3 курс бакалавриата, имеет опыт работы (модуль "Заявки на стажировку")
+        """
+        raise NotImplementedError
+
 
 # class Vacancy_Tag(Base):
 #     __tablename__ = "vacancy_tag"
@@ -151,6 +179,10 @@ class InternApplication(Base):
 
 
 class Vacancy(Base):
+    """
+    Модель вакансии для Кадров (Модуль «Потребность в стажерах»)
+    """
+
     __tablename__ = "vacancies"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -161,9 +193,14 @@ class Vacancy(Base):
     start_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     end_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     test: Mapped[str] = mapped_column(String)
-    requirements: Mapped[str] = mapped_column(JSON)
+    requirements: Mapped[schemas.VacancyRequirementsSpecializations] = mapped_column(
+        JSON
+    )
+    organisation: Mapped[str] = mapped_column(String)
+    coordinates: Mapped[str] = mapped_column(String)  # type str = "lat,long"
+    address: Mapped[str] = mapped_column(String)  # type str = "город,улица,дом"
 
-    hr = relationship(
+    hr = relationship(  # у нас это человек из колонки "Блок" таблицы "Комплексы правительства москвы"
         "User",
         back_populates="vacancies",
         primaryjoin="User.id==Vacancy.hr_id",
@@ -227,3 +264,23 @@ vacancy_tags = Table(
 
 # class Test(Base):
 #     __tablename__ = "tests"
+
+
+class Mailing(Base):
+    __tablename__ = "mailings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    sender_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    target_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    time_sent: Mapped[datetime.datetime] = mapped_column(DateTime)
+    subject: Mapped[str] = mapped_column(String)
+    message: Mapped[str] = mapped_column(String)
+
+    sender = relationship(
+        "User", back_populates="sent_mailings", primaryjoin="User.id==Mailing.sender_id"
+    )
+    target = relationship(
+        "User",
+        back_populates="recieved_mailings",
+        primaryjoin="User.id==Mailing.target_id",
+    )

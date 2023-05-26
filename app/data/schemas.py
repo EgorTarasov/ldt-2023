@@ -2,7 +2,7 @@ from typing import Optional, Any
 from datetime import date, datetime, time
 
 
-from pydantic import BaseModel, EmailStr, SecretStr, Json, AnyHttpUrl
+from pydantic import BaseModel, EmailStr, SecretStr, Json, AnyHttpUrl, validator, Field
 
 
 class UserLogin(BaseModel):
@@ -187,7 +187,16 @@ class TagBase(BaseModel):
 
 class TagCreate(TagBase):
     class Config:
-        schema_extra = {"example": {"name": "Тэг"}}
+        schema_extra = {
+            "examples": {
+                "example1": {
+                    "value": {"name": "Программист"},
+                },
+                "example2": {
+                    "value": {"name": "Математик"},
+                },
+            }
+        }
 
 
 class Tag(TagBase):
@@ -195,7 +204,7 @@ class Tag(TagBase):
 
     class Config:
         orm_mode = True
-        schema_extra = {"example": {"id": 1, "name": "Тэг"}}
+        schema_extra = {"example": {"id": 1, "name": "Программист"}}
 
 
 # endregion Tag
@@ -203,13 +212,76 @@ class Tag(TagBase):
 # region Vacancy
 
 
+class VacancyRequirementsBase(BaseModel):
+    """
+    #TODO: возможность получения опыта работы из резюме???
+    """
+
+    citizenship: Optional[list[str]] = ["RU, BY, KZ"]
+    age: Optional[int] = 35
+    experience: Optional[str]  # подразумевается опыт работы по специальности подготовки
+
+
+class VacancyRequirementsSpecializations(VacancyRequirementsBase):
+    education_level: Optional[dict[str, int]]
+    specializations: Optional[list[str]]
+
+    @validator("education_level", pre=True, always=True)
+    def education_level_must_be_dict(cls, v):
+        if not isinstance(v, dict):
+            raise ValueError("Must be a dict")
+        for i in v:
+            if not isinstance(i, str) or not isinstance(v[i], int):
+                raise ValueError("Must be a dict[str, int]")
+            # check if dict key is in list ["Бакалавриат", "Магистратура", "Специалитет"]
+            if i not in ["Бакалавриат", "Магистратура", "Специалитет"]:
+                raise ValueError("Бакалавриат, Магистратура, Специалитет")
+            if i == "Бакалавриат" and v[i] not in range(1, 5):
+                raise ValueError("Бакалавриат: 1-4")
+            if i == "Магистратура" and v[i] not in range(1, 3):
+                raise ValueError("Магистратура: 1-2")
+            if i == "Специалитет" and v[i] not in range(1, 6):
+                raise ValueError("Специалитет: 1-5")
+
+        return v
+
+    @validator("specializations", pre=True, always=True)
+    def specializations_must_be_list(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("Must be a list")
+        for i in v:
+            if len(i.split(".")) != 3 or not all([i.isdigit() for i in i.split(".")]):
+                raise ValueError(
+                    "Код специализации должен содержать 3 числа разделенных точкой, пример: 01.03.02"
+                )
+
+        return v
+
+    class Config:
+        schmea_extra = {
+            "example": {
+                "citizenship": ["RU", "BY", "KZ"],
+                "age": 35,
+                "experience": "1 год",
+                "education_level": {
+                    "Бакалавриат": 3,
+                    "Специалитет": 4,
+                },
+                "specializations": ["01.03.02", "01.03.03"],
+            }
+        }
+
+
 class VacancyBase(BaseModel):
     title: str
     description: str
     start_date: datetime
     end_date: datetime
-    requirements: Optional[dict[str, Any]]
-    test: Optional[Test | AnyHttpUrl] = AnyHttpUrl("https://127.0.0.1", scheme="https")
+    requirements: Optional[VacancyRequirementsSpecializations]
+    organisation: str
+    address: str
+    coordinates: str = "55.728291, 37.609463"  # type str = "lat,long"
+    test: Optional[Any] = AnyHttpUrl("https://127.0.0.1", scheme="https")
 
 
 class VacancyCreate(VacancyBase):
@@ -223,14 +295,14 @@ class VacancyCreate(VacancyBase):
                 "start_date": datetime(2023, 6, 15, 0, 0, 0),
                 "end_date": datetime(2023, 6, 30, 0, 0, 0),
                 "tags": [
-                    {
-                        "name": "Стажер",
-                    },
-                    {
-                        "name": "Шахтер",
-                    },
+                    TagCreate.Config.schema_extra["examples"][i]["value"]
+                    for i in TagCreate.Config.schema_extra["examples"]
                 ],
-                "requirements": {"some_requirement": "some_value"},
+                "requirements": VacancyRequirementsSpecializations.Config.schmea_extra[
+                    "example"
+                ],
+                "organisation": "Ларек Деда",
+                "address": "Москва,Ленинский проспект,4",
                 "test_url": "https://127.0.0.1",
             }
         }
@@ -256,4 +328,98 @@ class Vacancy(VacancyBase):
         }
 
 
+class VacancyFiltersBase(BaseModel):
+    tags: Optional[list[str]]
+    organisations: Optional[list[str]]
+
+
+class VacancyFiltersAvailable(VacancyFiltersBase):
+    city: Optional[list[str]]
+
+
+class VacancyFilters(VacancyFiltersBase):
+
+    city: Optional[str]
+    start_date: Optional[datetime | None]
+    end_date: Optional[datetime | None]
+
+
 # endregion
+
+
+# region Event
+
+
+# class EventBase(BaseModel):
+#     title: str
+#     start_time: datetime
+
+
+# class EventCreate(EventBase):
+#     class Config:
+#         schema_extra = {
+#             "example": {
+#                 "title": "Название события",
+#                 "start_time": datetime(2023, 6, 15, 0, 0, 0),
+#             }
+#         }
+
+
+# class Event(EventBase):
+#     id: Optional[int | None] = None
+
+#     class Config:
+#         orm_mode = True
+#         schema_extra = {
+#             "example": {
+#                 "id": 1,
+#                 "title": "Название события",
+#                 "start_time": datetime(2023, 6, 15, 0, 0, 0),
+#             }
+#         }
+
+
+# endregion Event
+
+# region Mailing
+
+
+class MailingBase(BaseModel):
+    target_id: int | None
+    subject: str
+    message: str
+    time_sent: datetime = datetime.now()
+
+
+class MailingCreate(MailingBase):
+    target_email: EmailStr | None
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "target_id": 2,
+                "subject": "Тема письма",
+                "message": "Сообщение",
+                "target_email": "test1@test.com",
+            },
+        }
+
+
+class Mailing(MailingBase):
+    id: Optional[int | None] = None
+    sender_id: int
+
+    class Config:
+        orm_mode = True
+        schema_extra = {
+            "example": {
+                "sender_id": 1,
+                "target_id": 2,
+                "subject": "Тема письма",
+                "message": "Сообщение",
+                "target_email": "test1@test.com",
+            }
+        }
+
+
+# endregion Mailing

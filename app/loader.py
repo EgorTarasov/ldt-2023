@@ -5,10 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.data import models
 from app.data.database import engine
 from app.routers import router
+from app.service import mail
 
 
 async def on_startup():
     models.Base.metadata.create_all(bind=engine)
+    mail.init_email_service()
 
 
 def create_app():
