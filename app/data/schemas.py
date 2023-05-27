@@ -13,6 +13,13 @@ class UserLogin(BaseModel):
     class Config:
         schema_extra = {
             "examples": {
+                "curator": {
+                    "value": {
+                        "email": "test@mipt.ru",
+                        "password": "test123456",
+                        "stay_loggedin": False,
+                    },
+                },
                 "hr": {
                     "value": {
                         "email": "test@misis.com",
@@ -53,6 +60,16 @@ class UserCreate(UserBase):
     class Config:
         schema_extra = {
             "examples": {
+                "curator": {
+                    "value": {
+                        "email": "test@mipt.ru",
+                        "phone": "+7 (999) 999-99-99",
+                        "gender": "М",
+                        "birthday": datetime.now().date(),
+                        "fio": "Сурначев Михаил Александрович",
+                        "password": "test123456",
+                    }
+                },
                 "hr": {
                     "value": {
                         "email": "test@misis.com",
@@ -63,16 +80,6 @@ class UserCreate(UserBase):
                         "password": "test123456",
                     },
                 },
-                "candidate": {
-                    "value": {
-                        "email": "test@mephi.com",
-                        "phone": "+7 (999) 999-99-99",
-                        "gender": "М",
-                        "birthday": datetime.now().date(),
-                        "fio": "Егоров Алексей Мифи",
-                        "password": "test123456",
-                    }
-                },
                 "mentor": {
                     "value": {
                         "email": "test@hse.com",
@@ -80,6 +87,16 @@ class UserCreate(UserBase):
                         "gender": "Ж",
                         "birthday": datetime.now().date(),
                         "fio": "Горденко Мария Константиновна",
+                        "password": "test123456",
+                    }
+                },
+                "candidate": {
+                    "value": {
+                        "email": "test@mephi.com",
+                        "phone": "+7 (999) 999-99-99",
+                        "gender": "М",
+                        "birthday": datetime.fromisoformat("2000-01-01").date(),
+                        "fio": "Егоров Алексей Мифи",
                         "password": "test123456",
                     }
                 },
@@ -166,23 +183,26 @@ class InternApplicationBase(BaseModel):
     resume: str
     citizenship: str
     graduation_date: date
+    city: str
 
 
 class InternApplicationCreate(InternApplicationBase):
     class Config:
         schema_extra = {
             "example": {
-                "course": "Сварщик",
-                "education": "Институт сварки",
+                "course": "Сварщик",  # TODO: парсим из списка специальностей
+                "education": "Институт сварки",  # TODO: тоже предлагаем из списка
                 "resume": "резюме",
                 "citizenship": "RU",
-                "graduation_date": date(2025, 1, 1),
+                "graduation_date": date(2024, 1, 1),
+                "city": "Москва",
             }
         }
 
 
 class InternApplication(InternApplicationBase):
     id: Optional[int | None] = None
+    status: str
 
     class Config:
         orm_mode = True
@@ -194,6 +214,7 @@ class InternApplication(InternApplicationBase):
                 "resume": "резюме",
                 "citizenship": "RU",
                 "graduation_date": "2000-01-01",
+                "city": "Москва",
             }
         }
 

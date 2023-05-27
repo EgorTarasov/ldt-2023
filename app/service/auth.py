@@ -87,7 +87,7 @@ async def get_current_user(db: Session, cookie_token: str) -> models.User:
     """ "Получение текущего пользователя"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Could not validate credentials {e}",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -96,14 +96,17 @@ async def get_current_user(db: Session, cookie_token: str) -> models.User:
         )
         email: str = payload.get("sub")  # type: ignore
         if email is None:
+            log.debug(f"email is None")
             raise credentials_exception
         token_data = schemas.TokenData(email=email)
-    except JWTError:
+    except JWTError as e:
+        log.debug(f"JWTError: {e}")
         raise credentials_exception
-
     if not token_data.email:
+        log.debug(f"token_data.email is None")
         raise credentials_exception
     user = crud.get_user_by_email(db, token_data.email)
     if user is None:
+        log.debug(f"User no found")
         raise credentials_exception
     return user

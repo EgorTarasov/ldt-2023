@@ -31,10 +31,27 @@ class MailingType(str, Enum):
 class MailingTemplate(str, Enum):
     event_info = "app/templates/event_info.html"
     event_reminder = "app/templates/event_reminder.html"
-    intern_invite = "app/templates/intern_invite.html"
+    intern_school_invite = "app/templates/intern_school_invite.html"
 
 
 class MentorStatus(str, Enum):
     pending = "pending"
     active = "active"
     declined = "declined"
+
+
+class InternApplicationStatus(str, Enum):
+    unverified = "unverified"
+    verified = "verified"
+    approved = "approved"
+    declined = "declined"
+
+
+class InternApplicationParameters(str, Enum):
+    status = "status"
+    age = "age"
+    city = "city"
+    course = "course"
+    education = "education"
+    citizenship = "citizenship"
+    graduation_date = "graduation_date"

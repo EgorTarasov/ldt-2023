@@ -156,17 +156,19 @@ class InternApplication(Base):
     __tablename__ = "intern_applications"
 
     id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), primary_key=True)
-    course: Mapped[str] = mapped_column(String)
-    education: Mapped[str] = mapped_column(String)
+    course: Mapped[str] = mapped_column(String)  # курс обучения
+    education: Mapped[str] = mapped_column(String)  # название учебного заведения
     resume: Mapped[str] = mapped_column(String)
     citizenship: Mapped[str] = mapped_column(String)
     graduation_date: Mapped[datetime.date] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String)
+    city: Mapped[str] = mapped_column(String)
     """
         Статус заявки на стажировку
         unverified - заявка не прошла базовую фильтрацию
         verified - заявка прошла базовую фильтрацию
         approved - заявка одобрена куратором
+        declined - заявка отклонена куратором
     """
     user = relationship(
         "User",
@@ -175,7 +177,7 @@ class InternApplication(Base):
     )
 
     def __repr__(self):
-        return f"<InternApplication(id={self.id}, course={self.course}, education={self.education}, resume={self.resume}, citizenship={self.citizenship}, graduation_date={self.graduation_date})>"
+        return f"<InternApplication(id={self.id}, course={self.course}, education={self.education}, resume={self.resume}, citizenship={self.citizenship}, graduation_date={self.graduation_date}, status={self.status})>"
 
     @property
     def rating(requirements: schemas.VacancyRequirementsBase) -> float:

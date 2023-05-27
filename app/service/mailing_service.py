@@ -5,6 +5,7 @@ from email.mime.text import MIMEText
 import jinja2
 from pydantic import EmailStr
 
+from app.data import models
 from app.utils.logging import log
 from app.utils.settings import settings
 from app.data.constants import MailingTemplate
@@ -32,7 +33,7 @@ def init_email_service() -> smtplib.SMTP:
 
 def send_email(template: MailingTemplate, template_data: dict) -> None:
     # TODO: определиться с тем, какие данные будут приходить в data
-    
+
     global SMTP_SERVER
     global TEMPLATES
     try:
@@ -56,6 +57,14 @@ def send_email(template: MailingTemplate, template_data: dict) -> None:
         raise e
 
 
+def create_mailing(
+    targets: list[models.User], template: MailingTemplate
+) -> None:
+    for target in targets:
+        send_email(template, template_data | {"to": target.email})
+
+
+# def create_mailing(targets: models.User, )
 # def main():
 #     print(send_email())
 

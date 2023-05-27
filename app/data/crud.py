@@ -2,7 +2,12 @@ from sqlalchemy import func, text, desc, or_
 from sqlalchemy.orm import Session
 from app.utils.logging import log
 from app.utils.list import flatten
-from app.data.constants import UserRole, MentorStatus
+from app.data.constants import (
+    UserRole,
+    MentorStatus,
+    InternApplicationStatus,
+    InternApplicationParameters,
+)
 
 from . import models, schemas
 
@@ -234,22 +239,144 @@ def update_intern_application(
     return db_application
 
 
+def get_intern_application_stats(db: Session, param: InternApplicationParameters):
+    db_data = []
+    if param == InternApplicationParameters.age:
+        # get all users grouped by age
+        db_users = (
+            db.query(
+                models.User,
+                func.date_part("year", func.age(models.User.birthday)).label("age"),
+            )
+            .group_by(models.User.id, "age")
+            .order_by("age")
+            .all()
+        )
+
+        # count intern applications by age
+        db_data = (
+            db.query(
+                func.date_part("year", func.age(models.User.birthday)).label("age"),
+                func.count(models.InternApplication.id).label("count"),
+            )
+            .join(models.InternApplication.user)
+            .filter(models.User.id.in_([i[0].id for i in db_users]))
+            .group_by("age")
+            .order_by("age")
+            .all()
+        )
+        
+    elif param == InternApplicationParameters.city:
+        db_data = (
+            db.query(
+                func.split_part(models.InternApplication.city, ",", 1).label(param.value),
+                func.count(models.InternApplication.city).label("count"),
+            )
+            .group_by(param.value)
+            .order_by(desc("count"))
+            .all()
+        )
+
+    elif param == InternApplicationParameters.status:
+        db_data = (
+            db.query(
+                models.InternApplication.status.label(param.value),
+                func.count(models.InternApplication.status).label("count"),
+            )
+            .group_by(param.value)
+            .order_by(desc("count"))
+            .all()
+        )
+    elif param == InternApplicationParameters.course:
+        db_data = (
+            db.query(
+                models.InternApplication.course.label(param.value),
+                func.count(models.InternApplication.course).label("count"),
+            )
+            .group_by(param.value)
+            .order_by(desc("count"))
+            .all()
+        )
+    elif param == InternApplicationParameters.education:
+        db_data = (
+            db.query(
+                models.InternApplication.education.label(param.value),
+                func.count(models.InternApplication.education).label("count"),
+            )
+            .group_by(param.value)
+            .order_by(desc("count"))
+            .all()
+        )
+    elif param == InternApplicationParameters.citizenship:
+        db_data = (
+            db.query(
+                models.InternApplication.citizenship.label(param.value),
+                func.count(models.InternApplication.citizenship).label("count"),
+            )
+            .group_by(param.value)
+            .order_by(desc("count"))
+            .all()
+        )
+    elif param == InternApplicationParameters.graduation_date:
+        db_data = (
+            db.query(
+                models.InternApplication.graduation_date.label(param.value),
+                func.count(models.InternApplication.graduation_date).label("count"),
+            )
+            .group_by(param.value)
+            .order_by(desc("count"))
+            .all()
+        )
+
+    log.debug(f"Intern applications: {db_data}")
+    return db_data
+
+
 def get_all_intern_applications(
-    db: Session, offset: int, limit: int
-) -> list[models.InternApplication] | None:
-    db_data = (
-        db.query(models.InternApplication)
-        .filter(models.InternApplication.status == "verified")
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+    db: Session,
+    offset: int,
+    limit: int,
+    status: InternApplicationStatus | None = None,
+) -> list[models.InternApplication]:
+    db_query = db.query(models.InternApplication)
+    if status:
+        db_query = db_query.filter(models.InternApplication.status == status.value)
+    db_data = db_query.offset(offset).limit(limit).all()
     log.debug(f"Intern applications: {db_data}")
     return db_data
 
 
 def get_intern_application(user: models.User) -> models.InternApplication | None:
     return user.intern_application
+
+
+def get_intern_application_by_id(
+    db: Session, id: int
+) -> models.InternApplication | None:
+    db_data = (
+        db.query(models.InternApplication)
+        .filter(models.InternApplication.id == id)
+        .one_or_none()
+    )
+    if db_data:
+        log.debug(f"Intern application: {db_data}")
+        return db_data
+    raise ValueError("Intern application not found")
+
+
+def update_intern_application_status(
+    db: Session, id: int, status: InternApplicationStatus
+):
+    db_data = (
+        db.query(models.InternApplication)
+        .filter(models.InternApplication.id == id)
+        .one_or_none()
+    )
+    if db_data is None:
+        raise ValueError("Intern application not found")
+    db_data.status = status.value
+    db.commit()
+    return db_data
 
 
 # endregion InternApplication
