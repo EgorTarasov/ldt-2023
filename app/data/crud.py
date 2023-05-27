@@ -1,6 +1,7 @@
 from sqlalchemy import func, text, desc, or_
 from sqlalchemy.orm import Session
 from app.utils.logging import log
+from app.utils.list import flatten
 from app.data.constants import UserRole, MentorStatus
 
 from . import models, schemas
@@ -94,18 +95,21 @@ def update_user_mentor_vacancy(
     db_vacancy = (
         db.query(models.Vacancy).filter(models.Vacancy.id == vacancy_id).one_or_none()
     )
+
     db_mentor = db.query(models.User).filter(models.User.id == mentor_id).one_or_none()
     log.debug(f"Vacancy: {db_vacancy}")
     log.debug(f"Mentor: {db_mentor}")
     if db_vacancy is None or db_mentor is None:
         raise Exception("Not found")
-
+    db_vacancy.status = "pending"
     db_offer = models.MentorVacancyOffer(
         mentor_id=db_mentor.id, vacancy_id=db_vacancy.id
     )
     db.add(db_offer)
+
     db.commit()
     db.refresh(db_offer)
+    db.refresh(db_vacancy)
 
     return db_mentor
 
@@ -128,6 +132,7 @@ def update_user_accept_offer(
     if db_vacancy is None:
         raise Exception("Vacancy not found")
     db_vacancy.mentor = mentor
+    db_vacancy.status = "accepted"
 
     db_offer.mentor_status = MentorStatus.active.value
     db_offer.mentor = mentor
@@ -135,6 +140,37 @@ def update_user_accept_offer(
     db.refresh(db_offer)
 
     return mentor
+
+
+def get_offers(db: Session, user: models.User, limit: int, offset: int) -> list | None:
+
+    if user.role == UserRole.mentor.value:
+        db_data = (
+            db.query(models.MentorVacancyOffer)
+            .filter((models.MentorVacancyOffer.mentor_id == user.id))
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        log.debug(f"Offers for {user}: {db_data}")
+        return db_data
+    elif user.role == UserRole.hr.value:
+        # get all vacancies created by hr and find all related MentorVacancyOffers
+        db_vacancies = (
+            db.query(models.Vacancy)
+            .filter(models.Vacancy.hr_id == user.id)
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        # flat_list = [item for sublist in l for item in sublist]
+        db_data = [
+            i.mentor_vacancy_offers for i in db_vacancies if i.mentor_vacancy_offers
+        ]
+        log.debug(f"Offers from {user}: {db_data}")
+        return flatten(db_data)
+
+        # db_vacancies = (db.query(models.Vacancy).filter(models.Vacancy.hr_id == user.id)).all()
 
 
 def get_users_available_mentors(
@@ -196,6 +232,20 @@ def update_intern_application(
     db.commit()
     db.refresh(db_application)
     return db_application
+
+
+def get_all_intern_applications(
+    db: Session, offset: int, limit: int
+) -> list[models.InternApplication] | None:
+    db_data = (
+        db.query(models.InternApplication)
+        .filter(models.InternApplication.status == "verified")
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    log.debug(f"Intern applications: {db_data}")
+    return db_data
 
 
 def get_intern_application(user: models.User) -> models.InternApplication | None:
@@ -284,7 +334,14 @@ def create_vacancy(
 
 
 def get_vacancies(
-    db: Session, filters: schemas.VacancyFilters, offset: int, limit: int
+    db: Session,
+    db_user: models.User,
+    filters: schemas.VacancyFilters,
+    offset: int,
+    limit: int,
+    status: list[str] = [
+        "published"
+    ],  # список статусов вакансий, которые нужно вернуть
 ) -> list[models.Vacancy]:
 
     data = filters.dict()
@@ -294,31 +351,55 @@ def get_vacancies(
         data["organisations"] = []
     if data["tags"] is None:
         data["tags"] = []
-
+    db_query = db.query(models.Vacancy).filter(models.Vacancy.status.in_(status))
     if not any(data.values()):
-        return db.query(models.Vacancy).offset(offset).limit(limit).all()
-    db_vacancies = (
-        db.query(models.Vacancy)
-        .join(models.Vacancy.tags)
-        .filter(
-            or_(
-                models.Tag.name.in_(data["tags"]),
-                models.Vacancy.organisation.in_(data["organisations"]),
-                models.Vacancy.address.ilike(f"%{data['city']}%"),
-            )
+        return db_query.offset(offset).limit(limit).all()
+
+    log.debug(f"status: {status}")
+    db_query = db_query.join(models.Vacancy.tags).filter(
+        or_(
+            models.Tag.name.in_(data["tags"]),
+            models.Vacancy.organisation.in_(data["organisations"]),
+            models.Vacancy.address.ilike(f"%{data['city']}%"),
         )
-        .offset(offset)
-        .limit(limit)
-        .all()
     )
+
+    db_vacancies = db_query.offset(offset).limit(limit).all()
 
     log.debug(f"vacancies: {db_vacancies}")
     return db_vacancies
 
 
-def delete_vacancy(db: Session, vacancy_id: int):
-    db.query(models.Vacancy).filter(models.Vacancy.id == vacancy_id).delete()
+def publish_vacancy(db: Session, db_user: models.User):
+    db_vacancy = (
+        db.query(models.Vacancy)
+        .filter(models.Vacancy.mentor_id == db_user.id)
+        .one_or_none()
+    )
+    if db_vacancy is None:
+        raise Exception("Vacancy not found")
+    db_vacancy.status = "published"
     db.commit()
+    db.refresh(db_vacancy)
+    log.debug(f"published vacancy: {db_vacancy} by {db_user}")
+    return db_vacancy
+
+
+def delete_vacancy(db: Session, vacancy_id: int):
+    db_vacancy = (
+        db.query(models.Vacancy).filter(models.Vacancy.id == vacancy_id).one_or_none()
+    )
+    if db_vacancy is None:
+        raise Exception("Vacancy not found")
+
+    db.query(models.MentorVacancyOffer).filter(
+        models.MentorVacancyOffer.vacancy_id == vacancy_id
+    ).delete()
+
+    db_vacancy.status = "closed"
+    db.commit()
+    db.refresh(db_vacancy)
+    return db_vacancy
 
 
 # endregion Vacancy

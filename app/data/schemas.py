@@ -12,10 +12,28 @@ class UserLogin(BaseModel):
 
     class Config:
         schema_extra = {
-            "example": {
-                "email": "test@test.com",
-                "password": "test123456",
-                "stay_loggedin": False,
+            "examples": {
+                "hr": {
+                    "value": {
+                        "email": "test@misis.com",
+                        "password": "test123456",
+                        "stay_loggedin": False,
+                    }
+                },
+                "candidate": {
+                    "value": {
+                        "email": "test@mephi.com",
+                        "password": "test123456",
+                        "stay_loggedin": False,
+                    }
+                },
+                "mentor": {
+                    "value": {
+                        "email": "test@hse.com",
+                        "password": "test123456",
+                        "stay_loggedin": False,
+                    }
+                },
             }
         }
 
@@ -34,13 +52,37 @@ class UserCreate(UserBase):
 
     class Config:
         schema_extra = {
-            "example": {
-                "email": "test@test.com",
-                "phone": "+7 (999) 999-99-99",
-                "gender": "М",
-                "birthday": datetime.now().date(),
-                "fio": "Мисосов Михаил Михайлович",
-                "password": "test123456",
+            "examples": {
+                "hr": {
+                    "value": {
+                        "email": "test@misis.com",
+                        "phone": "+7 (999) 999-99-99",
+                        "gender": "М",
+                        "birthday": datetime.now().date(),
+                        "fio": "Куренков Владимир Вячеславович",
+                        "password": "test123456",
+                    },
+                },
+                "candidate": {
+                    "value": {
+                        "email": "test@mephi.com",
+                        "phone": "+7 (999) 999-99-99",
+                        "gender": "М",
+                        "birthday": datetime.now().date(),
+                        "fio": "Егоров Алексей Мифи",
+                        "password": "test123456",
+                    }
+                },
+                "mentor": {
+                    "value": {
+                        "email": "test@hse.com",
+                        "phone": "+7 (999) 999-99-99",
+                        "gender": "Ж",
+                        "birthday": datetime.now().date(),
+                        "fio": "Горденко Мария Константиновна",
+                        "password": "test123456",
+                    }
+                },
             }
         }
 
@@ -219,7 +261,8 @@ class VacancyRequirementsBase(BaseModel):
 
     citizenship: Optional[list[str]] = ["RU, BY, KZ"]
     age: Optional[int] = 35
-    experience: Optional[str]  # подразумевается опыт работы по специальности подготовки
+    # подразумевается опыт работы по специальности подготовки
+    experience: Optional[str]
 
 
 class VacancyRequirementsSpecializations(VacancyRequirementsBase):
@@ -308,10 +351,11 @@ class VacancyCreate(VacancyBase):
         }
 
 
-class Vacancy(VacancyBase):
+class VacancyDto(VacancyBase):
     id: Optional[int | None] = None
     tags: list[Tag]
     hr_id: int
+    status: str
 
     class Config:
         orm_mode = True
@@ -324,6 +368,7 @@ class Vacancy(VacancyBase):
                 "end_date": datetime(2023, 6, 30, 0, 0, 0),
                 "tags": ["Стажер", "Шахтер"],
                 "test": "https://127.0.0.1",
+                "status": "hidden",
             }
         }
 
@@ -342,6 +387,24 @@ class VacancyFilters(VacancyFiltersBase):
     city: Optional[str]
     start_date: Optional[datetime | None]
     end_date: Optional[datetime | None]
+
+    class Config:
+        schema_extra = {
+            "examples": {
+                "empty": {
+                    "value": {},
+                },
+                "full": {
+                    "value": {
+                        "tags": ["Стажер", "Шахтер"],
+                        "organisations": ["Ларек Деда"],
+                        "city": "Москва",
+                        "start_date": datetime(2023, 6, 15, 0, 0, 0),
+                        "end_date": datetime(2023, 6, 30, 0, 0, 0),
+                    },
+                },
+            }
+        }
 
 
 class MentorOfferBase(BaseModel):
@@ -364,7 +427,7 @@ class MentorOfferDto(MentorOfferBase):
     mentor_status: str
 
     class Config:
-        from_orm = True
+        orm_mode = True
         schema_extra = {
             "example": {
                 "vacancy_id": 1,

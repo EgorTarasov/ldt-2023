@@ -161,7 +161,13 @@ class InternApplication(Base):
     resume: Mapped[str] = mapped_column(String)
     citizenship: Mapped[str] = mapped_column(String)
     graduation_date: Mapped[datetime.date] = mapped_column(Date)
-
+    status: Mapped[str] = mapped_column(String)
+    """
+        Статус заявки на стажировку
+        unverified - заявка не прошла базовую фильтрацию
+        verified - заявка прошла базовую фильтрацию
+        approved - заявка одобрена куратором
+    """
     user = relationship(
         "User",
         back_populates="intern_application",
@@ -203,6 +209,16 @@ class Vacancy(Base):
     organisation: Mapped[str] = mapped_column(String)
     coordinates: Mapped[str] = mapped_column(String)  # type str = "lat,long"
     address: Mapped[str] = mapped_column(String)  # type str = "город,улица,дом"
+    """
+    hidden - скрытая вакансия, не видна пользователям
+    pending - на вакансию не назначен ментор, не видна пользователям
+    accepted - на вакансию назначен ментор, не видна пользователям
+    published - вакансия опубликована, видна пользователям
+    closed - вакансия закрыта, не видна пользователям   
+    """
+    status: Mapped[str] = mapped_column(
+        String, default="hidden"
+    )  # hidden, pending, published, closed
 
     hr = relationship(  # у нас это человек из колонки "Блок" таблицы "Комплексы правительства москвы"
         "User",
@@ -229,7 +245,7 @@ class Vacancy(Base):
     )
 
     def __repr__(self):
-        return f"<Vacancy(id={self.id}, title={self.title}, description={self.description}, hr_id={self.hr_id}, start_date={self.start_date}, end_date={self.end_date}, test={self.test}, requirements={self.requirements})>"
+        return f"<Vacancy(id={self.id}, title={self.title}, description={self.description}, hr_id={self.hr_id}, mentor_id={self.mentor_id}, start_date={self.start_date}, end_date={self.end_date}, test={self.test}, requirements={self.requirements}, organisation={self.organisation}, coordinates={self.coordinates}, address={self.address}, status={self.status})>"
 
     # vacancy_enrolments = relationship(
     #     "VacancyEnrolment",

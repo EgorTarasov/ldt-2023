@@ -1,4 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Query, Path
+from typing import Annotated
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Response,
+    Query,
+    Path,
+    Body,
+)
 from sqlalchemy.orm import Session
 from app.data import crud, models, schemas
 from app.data.constants import UserRole
@@ -10,41 +20,64 @@ from app.service import vacancy_service
 router = APIRouter(prefix="/vacancy", tags=["vacancy"])
 
 
-@router.post("/create", response_model=schemas.Vacancy)
+@router.post("/create", response_model=schemas.VacancyDto)
 async def create_vacancy(
     vacancy_data: schemas.VacancyCreate,
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
-) -> schemas.Vacancy:
+) -> schemas.VacancyDto:
+    """
+    Create vacancy (hr only)
+    """
     if db_user.role != UserRole.hr:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
     db_vacancy: models.Vacancy = crud.create_vacancy(db, vacancy_data, db_user)
-    return schemas.Vacancy.from_orm(db_vacancy)
+    return schemas.VacancyDto.from_orm(db_vacancy)
 
 
-# route for getting vacancy filters
 @router.get("/filters", response_model=schemas.VacancyFiltersAvailable)
 async def get_vacancy_filters(
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
 ) -> schemas.VacancyFiltersAvailable:
+    """
+    Get vacancy filters
+    """
     return vacancy_service.get_all_filters(db)
 
 
-@router.post("/", response_model=list[schemas.Vacancy] | None)
+@router.post("/", response_model=list[schemas.VacancyDto] | None)
 async def get_vacancies(
-    filters: schemas.VacancyFilters,
+    filters: Annotated[
+        schemas.VacancyFilters,
+        Body(..., examples=schemas.VacancyFilters.Config.schema_extra["examples"]),
+    ],
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
     offset: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-) -> list[schemas.Vacancy] | None:
-    log.debug(f"filters: {filters}")
+) -> list[schemas.VacancyDto] | None:
+    """
+    Get vacancies by filters
+    """
 
-    db_vacancies = crud.get_vacancies(db, filters, offset, limit)
+    vacancy_status: list[str] = []
+    if db_user.role == UserRole.candidate:
+        vacancy_status = ["published"]
+    elif db_user.role == UserRole.mentor:
+        vacancy_status = ["accepted", "published"]
+    elif db_user.role == UserRole.hr:
+        vacancy_status = ["accepted", "published", "pending", "hidden"]
+    elif db_user.role == UserRole.curator:
+        vacancy_status = ["accepted", "published", "pending", "hidden", "closed"]
+
+    db_vacancies = crud.get_vacancies(
+        db, db_user, filters, offset, limit, vacancy_status
+    )
+    log.debug(f"db_vacancies: {db_vacancies}")
     return (
-        [schemas.Vacancy.from_orm(vacancy) for vacancy in db_vacancies]
+        [schemas.VacancyDto.from_orm(vacancy) for vacancy in db_vacancies]
         if db_vacancies
         else None
     )
@@ -57,6 +90,9 @@ async def get_available_mentors(
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
 ) -> list[schemas.User] | None:
+    """
+    Get available mentors for hr
+    """
     if db_user.role != UserRole.hr:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
@@ -71,6 +107,9 @@ async def apply_mentor_for_vacancy(
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
 ):
+    """
+    Apply mentor for vacancy (hr only)
+    """
     if db_user.role != UserRole.hr:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     try:
@@ -80,12 +119,31 @@ async def apply_mentor_for_vacancy(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.post("/mentor/accept", response_model=schemas.User)
+@router.get("/mentor/offers", response_model=list[schemas.MentorOfferDto] | None)
+async def get_offers(
+    offset: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db),
+    db_user: models.User = Depends(current_user),
+) -> list[schemas.MentorOfferDto] | None:
+    """
+    Get offers for mentor
+    """
+    db_offers = crud.get_offers(db, db_user, limit, offset)
+    return (
+        [schemas.MentorOfferDto.from_orm(i) for i in db_offers] if db_offers else None
+    )
+
+
+@router.post("/mentor/offers/accept")
 async def accept_vacancy_offer(
     vacancy_id: int = Query(..., description="Vacancy id", ge=1),
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
-) -> schemas.User:
+):
+    """
+    Accept vacancy offer (mentor only)
+    """
     log.debug(f"user: {db_user}")
     log.debug(f"mentor_vacancies: {db_user.mentor_vacancies}")
     if db_user.mentor_vacancies:
@@ -93,19 +151,43 @@ async def accept_vacancy_offer(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You already have accepted vacancy",
         )
-
     try:
         mentor = crud.update_user_accept_offer(db, db_user, vacancy_id)
-        return schemas.User.from_orm(mentor)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.delete("/{vacancy_id}")
+@router.post("publish")
+async def publish_vacancy(
+    db: Session = Depends(get_db),
+    db_user: models.User = Depends(current_user),
+):
+    """
+    Publish vacancy (mentor only)
+    """
+    if db_user.role != UserRole.mentor.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    try:
+        vacancy = crud.publish_vacancy(db, db_user)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.delete("/{vacancy_id}", response_model=schemas.VacancyDto | None)
 async def delete_vacancy(
     vacancy_id: int,
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
-):
-    crud.delete_vacancy(db, vacancy_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+) -> schemas.VacancyDto | None:
+    """
+    Delete vacancy by id (hr only)
+    """
+    if db_user.role != UserRole.hr:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    try:
+        vacancy = crud.delete_vacancy(db, vacancy_id)
+        return schemas.VacancyDto.from_orm(vacancy)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

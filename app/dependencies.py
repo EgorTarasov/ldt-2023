@@ -19,6 +19,7 @@ async def current_user(
     log.debug(id(db))
     if not access_token:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated (current_user)",
         )
     return await get_current_user(db, access_token)

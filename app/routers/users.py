@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import APIRouter, Cookie, Depends, status, Response, Request
+from fastapi import APIRouter, Cookie, Depends, status, Response, Request, Body
 from sqlalchemy.orm import Session
 from app.data import crud, models, schemas
 from app.dependencies import get_db, current_user
@@ -20,11 +20,19 @@ post update_user
 """
 
 
-@router.post("/", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    openapi_extra=schemas.UserCreate.Config.schema_extra,
+    response_model=schemas.User,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_user(
     request: Request,  # TODO: add middleware to write last ip address
     response: Response,
-    user_data: schemas.UserCreate,
+    user_data: Annotated[
+        schemas.UserCreate,
+        Body(..., examples=schemas.UserCreate.Config.schema_extra["examples"]),
+    ],
     db: Annotated[Session, None] = Depends(get_db),
 ) -> schemas.User:
     """
@@ -45,7 +53,10 @@ async def create_user(
 @router.post("/login")
 async def login(
     response: Response,
-    user_data: schemas.UserLogin,
+    user_data: Annotated[
+        schemas.UserLogin,
+        Body(..., examples=schemas.UserLogin.Config.schema_extra["examples"]),
+    ],
     db: Annotated[Session, None] = Depends(get_db),
 ):
     auth.authenticate_user(db, user_data)
@@ -65,7 +76,7 @@ async def login(
             httponly=False,
             max_age=60 * 60 * 24 * 30,
         )
-    return {f"message": "{access_token}"}
+    return {"message": f"{access_token}"}
 
 
 @router.delete("/")
