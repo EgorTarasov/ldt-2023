@@ -30,7 +30,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    role_id: Optional[int]
+    role: Optional[str]
 
     class Config:
         schema_extra = {
@@ -55,7 +55,7 @@ class User(UserBase):
     last_access: datetime
     last_ip: str
     active: bool
-    role_id: Optional[int]
+    role: Optional[str]
 
     class Config:
         orm_mode = True
@@ -66,7 +66,7 @@ class User(UserBase):
                 "fio": "Мисосов Михаил Михайлович ",
                 "gender": "М",
                 "birthday": "2000-01-01",
-                "role_id": 0,
+                "role": "candidate",
                 "first_access": datetime.now(),
                 "last_access": datetime.now(),
                 "last_ip": "127.0.0.1",
@@ -342,6 +342,37 @@ class VacancyFilters(VacancyFiltersBase):
     city: Optional[str]
     start_date: Optional[datetime | None]
     end_date: Optional[datetime | None]
+
+
+class MentorOfferBase(BaseModel):
+    vacancy_id: int
+    mentor_id: int
+
+
+class MentorOfferCreate(MentorOfferBase):
+    class Config:
+        schema_extra = {
+            "example": {
+                "mentor_id": 1,
+                "vacancy_id": 1,
+            }
+        }
+
+
+class MentorOfferDto(MentorOfferBase):
+    created_at: datetime
+    mentor_status: str
+
+    class Config:
+        from_orm = True
+        schema_extra = {
+            "example": {
+                "vacancy_id": 1,
+                "mentor_id": 1,
+                "created_at": datetime(2023, 6, 15, 0, 0, 0),
+                "mentor_status": "pending",
+            }
+        }
 
 
 # endregion

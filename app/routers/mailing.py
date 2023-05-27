@@ -17,7 +17,7 @@ async def create_mailing(
     db: Session = Depends(get_db),
     sender: models.User = Depends(current_user),
 ) -> schemas.Mailing:
-    if sender.role_id == UserRole.candidate or sender.role_id == UserRole.intern:
+    if sender.role == UserRole.candidate or sender.role == UserRole.intern:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
     target: models.User | None = None

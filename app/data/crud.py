@@ -1,6 +1,7 @@
 from sqlalchemy import func, text, desc, or_
 from sqlalchemy.orm import Session
 from app.utils.logging import log
+from app.data.constants import UserRole, MentorStatus
 
 from . import models, schemas
 
@@ -32,7 +33,7 @@ def update_user(db: Session, user: schemas.User) -> models.User:
     db_user.email = user.email
     db_user.fio = user.fio
     db_user.phone = user.phone if user.phone else db_user.phone
-    db_user.role_id = user.role_id if user.role_id else db_user.role_id
+    db_user.role = user.role if user.role else db_user.role
     db_user.birthday = user.birthday if user.birthday else db_user.birthday
     db_user.gender = user.gender
 
@@ -87,6 +88,75 @@ def get_user_sent_feedbacks(
     )
 
 
+def update_user_mentor_vacancy(
+    db: Session, user: models.User, vacancy_id: int, mentor_id: int
+) -> models.User:
+    db_vacancy = (
+        db.query(models.Vacancy).filter(models.Vacancy.id == vacancy_id).one_or_none()
+    )
+    db_mentor = db.query(models.User).filter(models.User.id == mentor_id).one_or_none()
+    log.debug(f"Vacancy: {db_vacancy}")
+    log.debug(f"Mentor: {db_mentor}")
+    if db_vacancy is None or db_mentor is None:
+        raise Exception("Not found")
+
+    db_offer = models.MentorVacancyOffer(
+        mentor_id=db_mentor.id, vacancy_id=db_vacancy.id
+    )
+    db.add(db_offer)
+    db.commit()
+    db.refresh(db_offer)
+
+    return db_mentor
+
+
+def update_user_accept_offer(
+    db: Session, mentor: models.User, vacancy_id: int
+) -> models.User:
+    db_offer = (
+        db.query(models.MentorVacancyOffer).filter(
+            (models.MentorVacancyOffer.vacancy_id == vacancy_id)
+        )
+    ).one_or_none()
+
+    if db_offer is None:
+        raise Exception("offer not found")
+
+    db_vacancy = (
+        db.query(models.Vacancy).filter(models.Vacancy.id == vacancy_id).one_or_none()
+    )
+    if db_vacancy is None:
+        raise Exception("Vacancy not found")
+    db_vacancy.mentor = mentor
+
+    db_offer.mentor_status = MentorStatus.active.value
+    db_offer.mentor = mentor
+    db.commit()
+    db.refresh(db_offer)
+
+    return mentor
+
+
+def get_users_available_mentors(
+    db: Session, offset: int, limit: int
+) -> list[models.User] | None:
+    # count user mentor_vacancies
+
+    db_data = (
+        db.query(models.User)
+        .filter(
+            (models.User.role == UserRole.mentor.value)
+            & (~models.User.mentor_vacancies.any())
+        )
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    log.debug(f"Available mentors: {db_data}")
+    return db_data
+
+
 def delete_feedback(db: Session, user: models.User, feedback_id: int) -> None:
     db.query(models.Feedback).filter(
         (models.Feedback.id == feedback_id) & (models.Feedback.sender_id == user.id)
@@ -135,29 +205,6 @@ def get_intern_application(user: models.User) -> models.InternApplication | None
 # endregion InternApplication
 
 # region Vacancy
-"""
-likes = db.Table('likes',
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
-    db.Column('post_id', db.Integer, db.ForeignKey('post.id'))
-)
-
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(20))
-
-    def __repr__(self):
-        return "<User('%s')>" % self.username
-
-class Post(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255))
-
-    likes = db.relationship('User', secondary = likes,
-        backref = db.backref('posts', lazy='dynamic'))
-
-    def __repr__(self):
-        return "<Post('%s')>" % self.title
-"""
 
 
 def get_all_tags(db: Session) -> list[tuple[str, int]]:

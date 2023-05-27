@@ -19,7 +19,7 @@ from app.data.database import Base
 class User(Base):
     __tablename__ = "users"
     """
-    role_id:
+    role:
     0 - Наставник -> mentor
     1 - Куратор -> curator
     2 - Кадр -> hr
@@ -35,7 +35,7 @@ class User(Base):
     fio: Mapped[str] = mapped_column(String)
     birthday: Mapped[datetime.date] = mapped_column(Date)
     gender: Mapped[str] = mapped_column(String, nullable=True)
-    role_id: Mapped[int] = mapped_column(Integer, default=3)  # TODO add enum
+    role: Mapped[str] = mapped_column(String, default="candidate")  # TODO add enum
     first_access: Mapped[datetime.datetime] = mapped_column(
         DateTime, default=datetime.datetime.now()
     )
@@ -49,6 +49,16 @@ class User(Base):
 
     vacancies = relationship(
         "Vacancy", back_populates="hr", primaryjoin="User.id==Vacancy.hr_id"
+    )
+
+    mentor_vacancies = relationship(
+        "Vacancy", back_populates="mentor", primaryjoin="User.id==Vacancy.mentor_id"
+    )
+
+    mentor_vacancy_offers = relationship(
+        "MentorVacancyOffer",
+        back_populates="mentor",
+        primaryjoin="User.id==MentorVacancyOffer.mentor_id",
     )
 
     intern_application = relationship(
@@ -83,7 +93,7 @@ class User(Base):
     # )
 
     def __repr__(self):
-        return f"<User(id={self.id}, email={self.email}, role_id={self.role_id})>"
+        return f"<User(id={self.id}, email={self.email}, role={self.role})>"
 
 
 class Feedback(Base):
@@ -169,15 +179,6 @@ class InternApplication(Base):
         raise NotImplementedError
 
 
-# class Vacancy_Tag(Base):
-#     __tablename__ = "vacancy_tag"
-
-#     tag_id: Mapped[int] = mapped_column(
-#         Integer, ForeignKey("tags.id"), primary_key=True
-#     )
-#     vacancy_id: Mapped[int] = mapped_column(Integer, ForeignKey("vacancies.id"))
-
-
 class Vacancy(Base):
     """
     Модель вакансии для Кадров (Модуль «Потребность в стажерах»)
@@ -190,6 +191,9 @@ class Vacancy(Base):
     description: Mapped[str] = mapped_column(String)
     # test_id: Mapped[int] = mapped_column(Integer, ForeignKey("tests.id"))
     hr_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    mentor_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
     start_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     end_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     test: Mapped[str] = mapped_column(String)
@@ -204,6 +208,18 @@ class Vacancy(Base):
         "User",
         back_populates="vacancies",
         primaryjoin="User.id==Vacancy.hr_id",
+    )
+
+    mentor = relationship(
+        "User",
+        back_populates="mentor_vacancies",
+        primaryjoin="User.id==Vacancy.mentor_id",
+    )
+
+    mentor_vacancy_offers = relationship(
+        "MentorVacancyOffer",
+        back_populates="vacancy",
+        primaryjoin="Vacancy.id==MentorVacancyOffer.vacancy_id",
     )
 
     tags = relationship(
@@ -240,6 +256,35 @@ vacancy_tags = Table(
     Column("tag_id", Integer, ForeignKey("vacancies.id")),
     Column("vacancy_id", Integer, ForeignKey("tags.id")),
 )
+
+
+class MentorVacancyOffer(Base):
+    __tablename__ = "mentor_vacancy_offers"
+
+    vacancy_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("vacancies.id"), primary_key=True
+    )
+    mentor_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
+
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, default=datetime.datetime.now()
+    )
+    mentor_status: Mapped[str] = mapped_column(String, default="pending")
+
+    mentor = relationship(
+        "User",
+        back_populates="mentor_vacancy_offers",
+        primaryjoin="User.id==MentorVacancyOffer.mentor_id",
+    )
+    vacancy = relationship(
+        "Vacancy",
+        back_populates="mentor_vacancy_offers",
+        primaryjoin="Vacancy.id==MentorVacancyOffer.vacancy_id",
+    )
+
+    def __repr__(self):
+        return f"<MentorVacancyOffer(vacancy_id={self.vacancy_id}, mentor_status={self.mentor_status}, created_at={self.created_at})>"
+
 
 # class VacancyEnrolment(Base):
 #     __tablename__ = "vacancy_enrolments"

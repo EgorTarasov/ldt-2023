@@ -1,9 +1,9 @@
 from enum import Enum
 
 
-class UserRole(int, Enum):
+class UserRole(str, Enum):
     """
-    role_id:
+    role:
     0 - Наставник -> mentor
     1 - Куратор -> curator
     2 - Кадр -> hr
@@ -11,11 +11,11 @@ class UserRole(int, Enum):
     4 - Стажер -> intern
     """
 
-    mentor = 0
-    curator = 1
-    hr = 2
-    candidate = 3
-    intern = 4
+    mentor = "mentor"
+    curator = "curator"
+    hr = "hr"
+    candidate = "candidate"
+    intern = "intern"
 
 
 class FeedbackType(str, Enum):
@@ -32,3 +32,9 @@ class MailingTemplate(str, Enum):
     event_info = "app/templates/event_info.html"
     event_reminder = "app/templates/event_reminder.html"
     intern_invite = "app/templates/intern_invite.html"
+
+
+class MentorStatus(str, Enum):
+    pending = "pending"
+    active = "active"
+    declined = "declined"
