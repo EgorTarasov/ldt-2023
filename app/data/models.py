@@ -44,6 +44,8 @@ class User(Base):
     )
     last_ip: Mapped[str] = mapped_column(String, default="127.0.0.1")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    vk: Mapped[str] = mapped_column(String, nullable=True)
+    telegram: Mapped[str] = mapped_column(String, nullable=True)
 
     enrolments = relationship("UserEnrolment", back_populates="user")
 
@@ -84,6 +86,14 @@ class User(Base):
         "Feedback",
         back_populates="target",
         primaryjoin="User.id==Feedback.target_id",
+    )
+
+    event_scores = relationship(
+        "EventScore", back_populates="user", primaryjoin="User.id==EventScore.user_id"
+    )
+
+    external_service_links = relationship(
+        "ExternalServiceLink", back_populates="creator"
     )
 
     # vacany_enrolments = relationship(
@@ -130,8 +140,26 @@ class Event(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String)
     start_time: Mapped[datetime.datetime] = mapped_column(DateTime)
+    max_score: Mapped[int] = mapped_column(Integer)
 
+    scores = relationship("EventScore", back_populates="event")
     enrolments = relationship("UserEnrolment", back_populates="event")
+    event_scores = relationship("EventScore", back_populates="event")
+
+
+class EventScore(Base):
+    __tablename__ = "event_scores"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    event_id: Mapped[int] = mapped_column(Integer, ForeignKey("events.id"))
+    score: Mapped[int] = mapped_column(Integer)
+
+    user = relationship("User", back_populates="event_scores")
+    event = relationship("Event", back_populates="event_scores")
+
+    def __repr__(self):
+        return f"<EventScore(user_id={self.user_id}, event_id={self.event_id}, score={self.score})>"
 
 
 class UserEnrolment(Base):
@@ -141,7 +169,6 @@ class UserEnrolment(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     event_id: Mapped[int] = mapped_column(Integer, ForeignKey("events.id"))
     status: Mapped[str] = mapped_column(String)
-    role: Mapped[str] = mapped_column(String)
 
     user = relationship("User", back_populates="enrolments")
     event = relationship("Event", back_populates="enrolments")
@@ -347,3 +374,16 @@ class Mailing(Base):
         back_populates="recieved_mailings",
         primaryjoin="User.id==Mailing.target_id",
     )
+
+
+class ExternalServiceLink(Base):
+    __tablename__ = "external_service_links"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String)
+    link: Mapped[str] = mapped_column(String)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id")
+    )  # Пользователь который добавил ссылку
+
+    creator = relationship("User", back_populates="external_service_links")

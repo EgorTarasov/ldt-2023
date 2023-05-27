@@ -1,11 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 from app.data import crud, models, schemas
 from app.data.constants import (
     UserRole,
-    MailingType,
     InternApplicationStatus,
     MailingTemplate,
 )
@@ -17,7 +16,7 @@ from app.utils.logging import log
 router = APIRouter(prefix="/mailing", tags=["mailing"])
 
 
-@router.post("/school_invite", response_model=list[schemas.Mailing] | None)
+@router.post("/send/school_invite", response_model=list[schemas.Mailing] | None)
 async def create_school_invite_mailing(
     mailing_data: schemas.MailingCreate,
     db: Session = Depends(get_db),
@@ -31,14 +30,29 @@ async def create_school_invite_mailing(
     )
 
     mailings = [
-        mailing_service.create_mailing(db, mailing_data, sender, target=ia.user)
+        crud.create_mailing(db, mailing_data, sender=sender, target=ia.user)
         for ia in intern_applications
     ]
+
+    for mailing in mailings:
+        template_data = {
+            "intern_name": mailing.target.fio,
+            "link": f"https://127.0.0.1/{mailing.target.id}",
+        }
+        mailing_service.send_mailing(
+            mailing, MailingTemplate.school_invite, template_data
+        )
+
     return (
         [schemas.Mailing.from_orm(mailing) for mailing in mailings]
         if mailings
         else None
     )
+    
+# TODO: отправлять event
+
+
+
 
 
 # @router.post("/", response_model=schemas.Mailing)

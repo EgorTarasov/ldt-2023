@@ -9,3 +9,5 @@ bcrypt
 iso3166
 jinja2
 pydantic[email]
+pandas
+openpyxl

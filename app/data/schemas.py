@@ -5,6 +5,7 @@ from datetime import date, datetime, time
 from pydantic import BaseModel, EmailStr, SecretStr, Json, AnyHttpUrl, validator, Field
 
 
+# region User
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
@@ -51,6 +52,8 @@ class UserBase(BaseModel):
     fio: str
     gender: str
     birthday: date
+    vk: Optional[AnyHttpUrl] = None
+    telegram: Optional[AnyHttpUrl] = None
 
 
 class UserCreate(UserBase):
@@ -66,7 +69,7 @@ class UserCreate(UserBase):
                         "phone": "+7 (999) 999-99-99",
                         "gender": "М",
                         "birthday": datetime.now().date(),
-                        "fio": "Сурначев Михаил Александрович",
+                        "fio": "Сурначев Михаил Дмитриевич",
                         "password": "test123456",
                     }
                 },
@@ -98,6 +101,8 @@ class UserCreate(UserBase):
                         "birthday": datetime.fromisoformat("2000-01-01").date(),
                         "fio": "Егоров Алексей Мифи",
                         "password": "test123456",
+                        "vk": "https://vk.com/alekseyegorov",
+                        "telegram": "https://t.me/ShadarRim",
                     }
                 },
             }
@@ -137,6 +142,9 @@ class User(UserBase):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+
+# endregion  User
 
 
 # region Feedback
@@ -465,33 +473,49 @@ class MentorOfferDto(MentorOfferBase):
 # region Event
 
 
-# class EventBase(BaseModel):
-#     title: str
-#     start_time: datetime
+class EventBase(BaseModel):
+    title: str
+    start_date: datetime
+    max_score: int
 
 
-# class EventCreate(EventBase):
-#     class Config:
-#         schema_extra = {
-#             "example": {
-#                 "title": "Название события",
-#                 "start_time": datetime(2023, 6, 15, 0, 0, 0),
-#             }
-#         }
+class EventCreate(EventBase):
+    ...
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "title": "Название события",
+                "start_date": datetime(2023, 6, 15, 0, 0, 0),
+                "max_score": 2,
+            }
+        }
 
 
-# class Event(EventBase):
-#     id: Optional[int | None] = None
+class EventDto(EventBase):
+    id: int
 
-#     class Config:
-#         orm_mode = True
-#         schema_extra = {
-#             "example": {
-#                 "id": 1,
-#                 "title": "Название события",
-#                 "start_time": datetime(2023, 6, 15, 0, 0, 0),
-#             }
-#         }
+    class Config:
+        orm_mode = True
+        schema_extra = {
+            "example": {
+                "id": 1,
+                "title": "Название события",
+                "start_date": datetime(2023, 6, 15, 0, 0, 0),
+                "max_score": 2,
+            }
+        }
+
+
+class EducationalTrack(BaseModel):
+    name: str
+    required_pass_rate: float
+
+
+class StudentTrackInfo(BaseModel):
+    fio: str
+    course: str
+    scores: list[int]
 
 
 # endregion Event
@@ -500,22 +524,17 @@ class MentorOfferDto(MentorOfferBase):
 
 
 class MailingBase(BaseModel):
-    target_id: int | None
     subject: str
     message: str
     time_sent: datetime = datetime.now()
 
 
 class MailingCreate(MailingBase):
-    target_email: EmailStr | None
-
     class Config:
         schema_extra = {
             "example": {
-                "target_id": 2,
                 "subject": "Тема письма",
                 "message": "Сообщение",
-                "target_email": "test1@test.com",
             },
         }
 
@@ -523,16 +542,16 @@ class MailingCreate(MailingBase):
 class Mailing(MailingBase):
     id: Optional[int | None] = None
     sender_id: int
+    target_id: int
 
     class Config:
         orm_mode = True
         schema_extra = {
             "example": {
-                "sender_id": 1,
-                "target_id": 2,
                 "subject": "Тема письма",
                 "message": "Сообщение",
-                "target_email": "test1@test.com",
+                "sender_id": 1,
+                "target_id": 2,
             }
         }
 

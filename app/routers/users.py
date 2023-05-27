@@ -50,7 +50,7 @@ async def create_user(
     return schemas.User.from_orm(db_user)
 
 
-@router.post("/login")
+@router.post("/login", response_model=schemas.User)
 async def login(
     response: Response,
     user_data: Annotated[
@@ -58,7 +58,7 @@ async def login(
         Body(..., examples=schemas.UserLogin.Config.schema_extra["examples"]),
     ],
     db: Annotated[Session, None] = Depends(get_db),
-):
+) -> schemas.User:
     auth.authenticate_user(db, user_data)
     access_token = auth.create_access_token(data={"sub": user_data.email})
     response.set_cookie(
@@ -76,7 +76,9 @@ async def login(
             httponly=False,
             max_age=60 * 60 * 24 * 30,
         )
-    return {"message": f"{access_token}"}
+
+    db_user = crud.get_user_by_email(db, user_data.email)
+    return schemas.User.from_orm(db_user)
 
 
 @router.delete("/")

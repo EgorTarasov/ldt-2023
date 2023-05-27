@@ -164,7 +164,7 @@ async def get_intern_application_by_id(
 # endpoint for approving intern applications (curator only)
 @router.post("/approve", response_model=schemas.InternApplication | None)
 async def approve_intern_application(
-    id: int = Query(..., ge=1),
+    intern_application_id: int = Query(..., ge=1),
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
 ):
@@ -175,7 +175,7 @@ async def approve_intern_application(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     try:
         db_intern_application = crud.update_intern_application_status(
-            db, id, InternApplicationStatus.approved
+            db, intern_application_id, InternApplicationStatus.approved
         )
         return schemas.InternApplication.from_orm(db_intern_application)
     except ValueError:

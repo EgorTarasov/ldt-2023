@@ -57,11 +57,44 @@ def send_email(template: MailingTemplate, template_data: dict) -> None:
         raise e
 
 
-def create_mailing(
-    targets: list[models.User], template: MailingTemplate
-) -> None:
-    for target in targets:
-        send_email(template, template_data | {"to": target.email})
+def send_mailing(mailing: models.Mailing, template: MailingTemplate, template_data: dict) -> None:
+    global SMTP_SERVER
+    global TEMPLATES
+    try:
+        if not SMTP_SERVER:
+            SMTP_SERVER = init_email_service()
+        if not TEMPLATES:
+            TEMPLATES = jinja2.Environment(
+                loader=jinja2.FileSystemLoader("app/templates")
+            )
+#         test_html = """
+# <html>
+#     <head></head>
+#     <body>
+#         <p>Hi!<br>
+#         How are you?<br>
+#         Here is the <a href="http://www.python.org">link</a> you wanted.
+#         </p>
+#     </body>
+# </html>
+
+        # """
+        msg = MIMEText(TEMPLATES.get_template(f"{template.value}.html").render(**template_data), "html")
+        msg["To"] = mailing.target.email
+        msg["Subject"] = mailing.subject
+        SMTP_SERVER.sendmail(
+            settings.SERVICE_MAIL_USER, mailing.target.email, msg.as_string()
+        )
+    except Exception as e:
+        log.error(f"Can't send email: {e}")
+        raise e
+
+
+# def create_mailing(
+#     targets: list[models.User], template: MailingTemplate
+# ) -> None:
+#     for target in targets:
+#         send_email(template, template_data | {"to": target.email})
 
 
 # def create_mailing(targets: models.User, )

@@ -29,9 +29,10 @@ class MailingType(str, Enum):
 
 
 class MailingTemplate(str, Enum):
-    event_info = "app/templates/event_info.html"
-    event_reminder = "app/templates/event_reminder.html"
-    intern_school_invite = "app/templates/intern_school_invite.html"
+    event_info = "event_info"
+    event_reminder = "event_reminder"
+    intern_invite = "intern_invite"
+    school_invite = "school_invite"
 
 
 class MentorStatus(str, Enum):

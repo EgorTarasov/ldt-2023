@@ -38,13 +38,20 @@ def get_hashed_user(user: schemas.UserCreate) -> schemas.UserCreateHashed:
 
 def authenticate_user(db: Session, user_data: schemas.UserLogin) -> models.User:
     """Авторизация пользователя"""
+
     db_user = crud.get_user_by_email(db, user_data.email)
-    if db_user and not verify_password(user_data.password, db_user.hashed_password):
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    if not verify_password(user_data.password, db_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
     return db_user
 
 

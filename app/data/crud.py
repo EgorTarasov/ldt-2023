@@ -12,6 +12,7 @@ from app.data.constants import (
 from . import models, schemas
 
 
+# region User
 def get_user(db: Session, user_id: int) -> models.User | None:
     return db.query(models.User).filter(models.User.id == user_id).one_or_none()
 
@@ -42,6 +43,8 @@ def update_user(db: Session, user: schemas.User) -> models.User:
     db_user.role = user.role if user.role else db_user.role
     db_user.birthday = user.birthday if user.birthday else db_user.birthday
     db_user.gender = user.gender
+    db_user.vk = user.vk if user.vk else db_user.vk
+    db_user.telegram = user.telegram if user.telegram else db_user.telegram
 
     db_user = db.merge(db_user)
     db.commit()
@@ -49,6 +52,8 @@ def update_user(db: Session, user: schemas.User) -> models.User:
 
     return db_user
 
+
+# endregion User
 
 # region Feedback
 
@@ -265,11 +270,13 @@ def get_intern_application_stats(db: Session, param: InternApplicationParameters
             .order_by("age")
             .all()
         )
-        
+
     elif param == InternApplicationParameters.city:
         db_data = (
             db.query(
-                func.split_part(models.InternApplication.city, ",", 1).label(param.value),
+                func.split_part(models.InternApplication.city, ",", 1).label(
+                    param.value
+                ),
                 func.count(models.InternApplication.city).label("count"),
             )
             .group_by(param.value)
@@ -576,3 +583,45 @@ def get_recieved_mailings(
 
 
 # endregion Mailing
+
+
+# region Educational_courses
+
+
+def create_event(db: Session, event: schemas.EventCreate) -> models.Event:
+    db_event = models.Event(**event.dict())
+    db.add(db_event)
+    db.commit()
+    db.refresh(db_event)
+    return db_event
+
+
+def create_students_events_scores(
+    db: Session,
+    students: list[schemas.StudentTrackInfo],
+    events: list[schemas.EventCreate],
+):
+    for student in students:
+        db_student = (
+            db.query(models.User).filter(models.User.fio == student.fio).one_or_none()
+        )
+        if db_student is None:
+            raise Exception("Student not found")
+        db_scores = []
+        for event in events:
+            db_event = (
+                db.query(models.Event)
+                .filter(models.Event.title == event.title)
+                .one_or_none()
+            )
+            if db_event is None:
+                raise Exception("Event not found")
+
+            db_scores.append(
+                models.EventScore(user_id=db_student.id, event_id=db_event.id)
+            )
+        db.add_all(db_scores)
+        db.commit()
+
+
+# endregion Educational_courses
