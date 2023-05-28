@@ -6,6 +6,7 @@ from app.data import models
 from app.data.database import engine
 from app.routers import router
 from app.service import mailing_service
+from app.data.openapi import get_openapi_schema
 
 
 async def on_startup():
@@ -24,6 +25,6 @@ def create_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
+    app.openapi_schema = get_openapi_schema(app)
     app.include_router(router)
     return app
