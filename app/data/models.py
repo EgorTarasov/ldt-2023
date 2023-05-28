@@ -33,7 +33,7 @@ class User(Base):
     policy_agreed: Mapped[bool] = mapped_column(Boolean, default=True)
     phone: Mapped[str] = mapped_column(String, nullable=True)
     fio: Mapped[str] = mapped_column(String)
-    birthday: Mapped[datetime.date] = mapped_column(Date)
+    birthday: Mapped[datetime.date] = mapped_column(Date, nullable=True)
     gender: Mapped[str] = mapped_column(String, nullable=True)
     role: Mapped[str] = mapped_column(String, default="candidate")  # TODO add enum
     first_access: Mapped[datetime.datetime] = mapped_column(
@@ -362,7 +362,8 @@ class Mailing(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     sender_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     target_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
-    time_sent: Mapped[datetime.datetime] = mapped_column(DateTime)
+    time_sent: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.now())
+    subject: Mapped[str] = mapped_column(String)
 
     sender = relationship(
         "User", back_populates="sent_mailings", primaryjoin="User.id==Mailing.sender_id"

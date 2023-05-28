@@ -7,6 +7,7 @@ from app.data.constants import (
     UserRole,
     InternApplicationStatus,
     MailingTemplate,
+    MailingSubjects
 )
 from app.dependencies import get_db, current_user
 from app.service import mailing_service
@@ -52,7 +53,7 @@ async def create_school_invite_mailing(
         school_link = school_link.link
 
     mailings = [
-        crud.create_mailing(db, sender=sender, target=ia.user)
+        crud.create_mailing(db, sender, ia.user, MailingSubjects.school_invite)
         for ia in intern_applications
     ]
 

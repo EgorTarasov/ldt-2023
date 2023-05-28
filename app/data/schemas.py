@@ -50,8 +50,8 @@ class UserBase(BaseModel):
     email: EmailStr
     phone: Optional[str] = None
     fio: str
-    gender: str
-    birthday: date
+    gender: Optional[str] = None
+    birthday: Optional[date] = None
     vk: Optional[AnyHttpUrl] = None
     telegram: Optional[AnyHttpUrl] = None
     role: Optional[str] = "candidate"
@@ -71,6 +71,7 @@ class UserCreate(UserBase):
                         "birthday": datetime.now().date(),
                         "fio": "Сурначев Михаил Дмитриевич",
                         "password": "test123456",
+                        "role": "curator",
                     }
                 },
                 "hr": {
@@ -81,6 +82,7 @@ class UserCreate(UserBase):
                         "birthday": datetime.now().date(),
                         "fio": "Куренков Владимир Вячеславович",
                         "password": "test123456",
+                        "role": "hr",
                     },
                 },
                 "mentor": {
@@ -91,6 +93,7 @@ class UserCreate(UserBase):
                         "birthday": datetime.now().date(),
                         "fio": "Горденко Мария Константиновна",
                         "password": "test123456",
+                        "role": "mentor",
                     }
                 },
                 "candidate": {
@@ -103,6 +106,7 @@ class UserCreate(UserBase):
                         "password": "test123456",
                         "vk": "https://vk.com/alekseyegorov",
                         "telegram": "https://t.me/ShadarRim",
+                        "role": "candidate",
                     }
                 },
             }
@@ -401,6 +405,22 @@ class VacancyDto(VacancyBase):
         }
 
 
+class MentorBase(BaseModel):
+    fio: str
+    email: EmailStr
+
+
+class MentorCreate(MentorBase):
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "fio": "Иванов Иван Иванович",
+                "email": "misis.larek.deda+mentortest@mail.ru",
+            }
+        }
+
+
 class VacancyFiltersBase(BaseModel):
     tags: Optional[list[str]]
     organisations: Optional[list[str]]
@@ -515,6 +535,14 @@ class StudentTrackInfo(BaseModel):
     fio: str
     course: str
     scores: list[int]
+    
+class EventScore(BaseModel):
+    title: str
+    event_id: int
+    score: int
+    
+    class Config:
+        orm_mode = True
 
 
 # endregion Event
@@ -527,6 +555,7 @@ class Mailing(BaseModel):
     sender_id: int
     target_id: int
     time_sent: datetime = datetime.now()
+    subject: str
 
     class Config:
         orm_mode = True

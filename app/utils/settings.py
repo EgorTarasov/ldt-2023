@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     DOCKER_MODE: bool = False
     PROJECT_NAME: str
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
+    DOMAIN: str = "0.0.0.0:8000"
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:

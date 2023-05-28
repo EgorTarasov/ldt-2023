@@ -44,7 +44,7 @@ def update_user(db: Session, user: schemas.User) -> models.User:
     db_user.phone = user.phone if user.phone else db_user.phone
     db_user.role = user.role if user.role else db_user.role
     db_user.birthday = user.birthday if user.birthday else db_user.birthday
-    db_user.gender = user.gender
+    db_user.gender = user.gender if user.gender else ""
     db_user.vk = user.vk if user.vk else db_user.vk
     db_user.telegram = user.telegram if user.telegram else db_user.telegram
 
@@ -101,6 +101,16 @@ def get_user_sent_feedbacks(
     )
 
 
+def create_mentor(db: Session, mentor: schemas.UserCreateHashed) -> models.User:
+
+    db_mentor = models.User(**mentor.dict())
+    db_mentor.role = UserRole.mentor.value
+    db.add(db_mentor)
+    db.commit()
+    db.refresh(db_mentor)
+    return db_mentor
+
+
 def update_user_mentor_vacancy(
     db: Session, user: models.User, vacancy_id: int, mentor_id: int
 ) -> models.User:
@@ -109,10 +119,14 @@ def update_user_mentor_vacancy(
     )
 
     db_mentor = db.query(models.User).filter(models.User.id == mentor_id).one_or_none()
+
     log.debug(f"Vacancy: {db_vacancy}")
     log.debug(f"Mentor: {db_mentor}")
-    if db_vacancy is None or db_mentor is None:
-        raise Exception("Not found")
+    if db_mentor is None:
+        raise ValueError("Mentor not found")
+    if db_vacancy is None:
+        raise ValueError("Vacancy not found")
+
     db_vacancy.status = "pending"
     db_offer = models.MentorVacancyOffer(
         mentor_id=db_mentor.id, vacancy_id=db_vacancy.id
@@ -488,6 +502,10 @@ def get_vacancies(
     if data["tags"] is None:
         data["tags"] = []
     db_query = db.query(models.Vacancy).filter(models.Vacancy.status.in_(status))
+
+    if db_user.role == UserRole.hr.value:
+        db_query = db_query.filter(models.Vacancy.hr_id == db_user.id)
+
     if not any(data.values()):
         return db_query.offset(offset).limit(limit).all()
 
@@ -560,18 +578,20 @@ def get_mailing_link(
     db: Session, title: str, creator: models.User
 ) -> models.ExternalServiceLink | None:
 
-    return (db.query(models.ExternalServiceLink)
+    return (
+        db.query(models.ExternalServiceLink)
         .filter(models.ExternalServiceLink.title == title)
         .filter(models.ExternalServiceLink.creator_id == creator.id)
-        .one_or_none())
+        .one_or_none()
+    )
 
 
 def create_mailing(
-    db: Session,
-    sender: models.User,
-    target: models.User,
+    db: Session, sender: models.User, target: models.User, subject: str
 ) -> models.Mailing:
-    db_mailing = models.Mailing(sender_id=sender.id, target_id=target.id)
+    db_mailing = models.Mailing(
+        sender_id=sender.id, target_id=target.id, subject=subject
+    )
 
     db.add(db_mailing)
     db.commit()
@@ -615,6 +635,67 @@ def create_event(db: Session, event: schemas.EventCreate) -> models.Event:
     db.commit()
     db.refresh(db_event)
     return db_event
+
+
+def get_events(db: Session, limit: int, offset: int) -> list[models.Event] | None:
+    return db.query(models.Event).offset(offset).limit(limit).all()
+
+
+def get_events_scores(
+    db: Session, db_user: models.User, limit: int, offset: int
+) -> list[models.EventScore] | None:
+    return (
+        db.query(models.EventScore)
+        .filter(models.EventScore.user_id == db_user.id)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+
+def get_education_track_max_score(db: Session):
+    # return sum of all event max scores
+    return db.query(func.sum(models.Event.max_score)).one()[0]
+
+
+def get_candidates_scores(db: Session, limit: int, offset: int):
+    # get all event scores and max_score for all events grouped by user id and fio
+    db_data = (
+        db.query(
+            models.User.id,
+            models.User.fio,
+            func.sum(models.EventScore.score).label("score"),
+            db.query(func.sum(models.Event.max_score)).one()[0],
+        )
+        .join(models.EventScore.user)
+        .join(models.EventScore.event)
+        .group_by(models.User.id, models.User.fio)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    log.debug(f"candidates scores: {db_data}")
+    return db_data
+
+
+def get_candidate_score_by_id(db: Session, candidate_id: int):
+    # get event scores for candidate by id
+    db_data = (
+        db.query(
+            models.Event.id,
+            models.Event.title,
+            models.EventScore.score,
+            models.Event.max_score,
+        )
+        .join(models.EventScore.user)
+        .join(models.EventScore.event)
+        .filter(models.User.id == candidate_id)
+        .all()
+    )
+    
+    log.debug(f"candidate score: {db_data}")
+    return db_data
 
 
 def create_students_events_scores(

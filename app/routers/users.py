@@ -53,8 +53,9 @@ async def create_user(
         response.set_cookie(
             key="access_token",
             value=auth.create_access_token(data={"sub": user_data.email}),
-            httponly=True,
+            httponly=False,
             max_age=60 * 60 * 24 * 30,
+            samesite="none",
         )
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -77,6 +78,7 @@ async def login(
         value=access_token,
         httponly=False,
         max_age=60 * 60 * 24 * 30,
+        samesite="none",
     )
 
     if user_data.stay_loggedin:
@@ -86,6 +88,7 @@ async def login(
             value=refresh_token,
             httponly=False,
             max_age=60 * 60 * 24 * 30,
+            samesite="none",
         )
 
     db_user = crud.get_user_by_email(db, user_data.email)
@@ -101,10 +104,12 @@ async def logout(
     response.delete_cookie(
         key="refresh_token",
         httponly=False,
+        samesite="none",
     )
     response.delete_cookie(
         key="access_token",
         httponly=False,
+        samesite="none",
     )
     return {"message": "logout success"}
 

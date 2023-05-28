@@ -23,9 +23,9 @@ class FeedbackType(str, Enum):
     sent = "sent"
 
 
-class MailingType(str, Enum):
-    received = "received"
-    sent = "sent"
+# class MailingType(str, Enum):
+#     received = "received"
+#     sent = "sent"
 
 
 class MailingTemplate(str, Enum):
@@ -33,6 +33,15 @@ class MailingTemplate(str, Enum):
     event_reminder = "event_reminder"
     intern_invite = "intern_invite"
     school_invite = "school_invite"
+    single_credentials = "single_credentials"
+    
+
+class MailingSubjects(str, Enum):
+    event_info = "Информация о мероприятии"
+    event_reminder = "Напоминание о мероприятии"
+    intern_invite = "Приглашение на стажировку"
+    school_invite = "Приглашение в 'Карьерную школу'"
+    single_credentials = "Данные для входа в систему"
 
 
 class MentorStatus(str, Enum):

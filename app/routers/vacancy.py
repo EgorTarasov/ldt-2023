@@ -1,3 +1,5 @@
+import string
+import random
 from typing import Annotated
 from fastapi import (
     APIRouter,
@@ -9,12 +11,15 @@ from fastapi import (
     Path,
     Body,
 )
+
 from sqlalchemy.orm import Session
 from app.data import crud, models, schemas
-from app.data.constants import UserRole
+from app.data.constants import UserRole, MailingTemplate, MailingSubjects
 from app.dependencies import get_db, current_user
+from app.service.auth import get_hashed_user
 from app.utils.logging import log
-from app.service import vacancy_service
+from app.service import vacancy_service, mailing_service
+from app.utils.settings import settings
 
 
 router = APIRouter(prefix="/vacancy", tags=["vacancy"])
@@ -108,15 +113,48 @@ async def apply_mentor_for_vacancy(
     db_user: models.User = Depends(current_user),
 ):
     """
-    Apply mentor for vacancy (hr only)
+    Apply mentor for vacancy (hr)
     """
     if db_user.role != UserRole.hr:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     try:
         mentor = crud.update_user_mentor_vacancy(db, db_user, vacancy_id, mentor_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
+
+@router.post("/mentor/create")
+async def create_mentor(
+    mentor_data: schemas.MentorCreate,
+    db: Session = Depends(get_db),
+    db_user: models.User = Depends(current_user),
+) -> schemas.User:
+    if db_user.role != UserRole.hr:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    password = "".join(random.choice(string.ascii_lowercase) for i in range(16))
+    mentor: schemas.UserCreate = schemas.UserCreate(
+        **mentor_data.dict(), password=password
+    )
+    mentor_create: schemas.UserCreateHashed = get_hashed_user(mentor)
+    db_mentor = crud.create_mentor(db, mentor_create)
+
+    mailing = crud.create_mailing(db, db_user, db_mentor, MailingSubjects.single_credentials)
+
+    template_data = {
+        "fio": db_mentor.fio,
+        "login": db_mentor.email,
+        "password": password,
+        "domain": f"{settings.DOMAIN}/login"
+    }
+    mailing_service.send_mailing(
+        mailing, MailingTemplate.single_credentials, template_data
+    )
+
+    return schemas.User.from_orm(db_mentor)
 
 
 @router.get("/mentor/offers", response_model=list[schemas.MentorOfferDto] | None)
