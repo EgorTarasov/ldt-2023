@@ -7,7 +7,7 @@ from app.data.constants import (
     UserRole,
     InternApplicationStatus,
     MailingTemplate,
-    MailingSubjects
+    MailingSubjects,
 )
 from app.dependencies import get_db, current_user
 from app.service import mailing_service
@@ -23,6 +23,9 @@ async def create_mailing_links(
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
 ) -> list[dict[str, int | str]]:
+    """
+    Создание ссылок на внешние ресурсы для рассылки (для куратора)
+    """
     if db_user.role != UserRole.curator:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
@@ -36,6 +39,9 @@ async def create_school_invite_mailing(
     db: Session = Depends(get_db),
     sender: models.User = Depends(current_user),
 ) -> list[schemas.Mailing] | None:
+    """
+    Отправка приглашения в Карьерную школу по составленному списку кандидатов с одобренными заявками (для куратора)
+    """
     # FIXME: если есть много трекок, то надо определять каким пользователям, какие треки отправить
     if sender.role != UserRole.curator:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -73,13 +79,14 @@ async def create_school_invite_mailing(
     )
 
 
-@router.post("/send/{event_id}")
-async def create_event_invite_mailing(
-    event_id: int = Path(),
-    db: Session = Depends(get_db),
-    sender: models.User = Depends(current_user),
-):
-    if sender.role != UserRole.curator:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+# @router.post("/send/{event_id}")
+# async def create_event_invite_mailing(
+#     event_id: int = Path(),
+#     db: Session = Depends(get_db),
+#     sender: models.User = Depends(current_user),
+# ):
 
-    event_link = f"http://0.0.0.0:8000/events/{event_id}"
+#     if sender.role != UserRole.curator:
+#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
+#     event_link = f"http://0.0.0.0:8000/events/{event_id}"

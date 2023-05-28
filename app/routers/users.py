@@ -63,7 +63,7 @@ async def create_user(
     db: Annotated[Session, None] = Depends(get_db),
 ) -> schemas.User:
     """
-    request.client.host - получить ip адрес
+    Создание пользователя для авторизации (для кандидата)
     """
     try:
         db_user: models.User = crud.create_user(db, auth.get_hashed_user(user_data))
@@ -84,6 +84,9 @@ async def login(
     ],
     db: Annotated[Session, None] = Depends(get_db),
 ) -> schemas.User:
+    """
+    Авторизация пользователя на платформе
+    """
     auth.authenticate_user(db, user_data)
 
     access_cookie = access_cookie_params.copy()
@@ -108,6 +111,9 @@ async def logout(
     refresh_token: str | None = Cookie(None),
     access_token: str | None = Cookie(None),
 ):
+    """
+    Выход пользователя из системы
+    """
     response.delete_cookie(
         key="access_token",
         httponly=access_cookie_params["httponly"],
@@ -125,6 +131,9 @@ async def logout(
 async def get_user(
     db_user: models.User = Depends(current_user),
 ) -> schemas.User:
+    """
+    Получение данных пользователя
+    """
     log.debug(db_user)
     return schemas.User.from_orm(db_user)
 
@@ -134,6 +143,9 @@ async def update_user(
     user_data: schemas.User,
     db: Session = Depends(get_db),
 ) -> schemas.User:
+    """
+    Обновление данных пользователя
+    """
     db_user = crud.update_user(db, user_data)
 
     return schemas.User.from_orm(db_user)

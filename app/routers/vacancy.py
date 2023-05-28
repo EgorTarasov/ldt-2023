@@ -32,7 +32,7 @@ async def create_vacancy(
     db_user: models.User = Depends(current_user),
 ) -> schemas.VacancyDto:
     """
-    Create vacancy (hr only)
+    Создание заявки на стажировку (для HR)
     """
     if db_user.role != UserRole.hr:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -47,7 +47,7 @@ async def get_vacancy_filters(
     db_user: models.User = Depends(current_user),
 ) -> schemas.VacancyFiltersAvailable:
     """
-    Get vacancy filters
+    Получение доступных фильтров для вакансий
     """
     return vacancy_service.get_all_filters(db)
 
@@ -64,7 +64,13 @@ async def get_vacancies(
     limit: int = Query(10, ge=1, le=100),
 ) -> list[schemas.VacancyDto] | None:
     """
-    Get vacancies by filters
+    Получение списка вакансий по фильтрам (для кандидата, ментора, HR, куратора)
+
+    для кандидата - только опубликованные
+    для ментора - опубликованные и принятые
+    для HR - опубликованные, принятые и ожидающие (созданные HR)
+    для куратора - опубликованные, принятые, ожидающие, скрытые и закрытые
+
     """
 
     vacancy_status: list[str] = []
@@ -96,7 +102,7 @@ async def get_available_mentors(
     db_user: models.User = Depends(current_user),
 ) -> list[schemas.User] | None:
     """
-    Get available mentors for hr
+    Получение списка доступных менторов (для HR)
     """
     if db_user.role != UserRole.hr:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -113,7 +119,7 @@ async def apply_mentor_for_vacancy(
     db_user: models.User = Depends(current_user),
 ):
     """
-    Apply mentor for vacancy (hr)
+    Назначение ментора на вакансию (для HR)
     """
     if db_user.role != UserRole.hr:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -133,6 +139,9 @@ async def create_mentor(
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
 ) -> schemas.User:
+    """
+    Создание аккаунта ментора, в случае если он не был зарегистрирован на платформе (для HR)
+    """
     if db_user.role != UserRole.hr:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     password = "".join(random.choice(string.ascii_lowercase) for i in range(16))
@@ -142,13 +151,15 @@ async def create_mentor(
     mentor_create: schemas.UserCreateHashed = get_hashed_user(mentor)
     db_mentor = crud.create_mentor(db, mentor_create)
 
-    mailing = crud.create_mailing(db, db_user, db_mentor, MailingSubjects.single_credentials)
+    mailing = crud.create_mailing(
+        db, db_user, db_mentor, MailingSubjects.single_credentials
+    )
 
     template_data = {
         "fio": db_mentor.fio,
         "login": db_mentor.email,
         "password": password,
-        "domain": f"{settings.DOMAIN}/login"
+        "domain": f"{settings.DOMAIN}/login",
     }
     mailing_service.send_mailing(
         mailing, MailingTemplate.single_credentials, template_data
@@ -165,7 +176,7 @@ async def get_offers(
     db_user: models.User = Depends(current_user),
 ) -> list[schemas.MentorOfferDto] | None:
     """
-    Get offers for mentor
+    Получение списка заявлений для начала работы (для ментора)
     """
     db_offers = crud.get_offers(db, db_user, limit, offset)
     return (
@@ -180,7 +191,7 @@ async def accept_vacancy_offer(
     db_user: models.User = Depends(current_user),
 ):
     """
-    Accept vacancy offer (mentor only)
+    Принятие заявки на стажировку для метора и фиксация его на вакансии (для ментора)
     """
     log.debug(f"user: {db_user}")
     log.debug(f"mentor_vacancies: {db_user.mentor_vacancies}")
@@ -202,7 +213,7 @@ async def publish_vacancy(
     db_user: models.User = Depends(current_user),
 ):
     """
-    Publish vacancy (mentor only)
+    Публикация вакансии, после добавления недостающей информации (для ментора)
     """
     if db_user.role != UserRole.mentor.value:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -220,7 +231,7 @@ async def delete_vacancy(
     db_user: models.User = Depends(current_user),
 ) -> schemas.VacancyDto | None:
     """
-    Delete vacancy by id (hr only)
+    Закрытие вакансии (для HR)
     """
     if db_user.role != UserRole.hr:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)

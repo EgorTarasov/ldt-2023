@@ -42,10 +42,13 @@ async def upload_file(
     db_user: models.User = Depends(current_user),
     file: bytes = File(...),
 ):
-    # save file to static folder
+    """
+    Загрузка данных о прохождении Карьерной школы кандидатами с оценками из мероприятий из excel-файла
+    """
+
     with open("static/test.xlsx", "wb") as f:
         f.write(file)
-    # process file
+
     tracks, students, edu_events = process_file("static/test.xlsx")
     try:
         crud.create_students_events_scores(db, students, edu_events)

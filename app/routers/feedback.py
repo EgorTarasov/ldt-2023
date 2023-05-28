@@ -26,7 +26,7 @@ async def get_feedbacks(
     db_user: models.User = Depends(current_user),
 ) -> list[schemas.Feedback] | None:
     """
-    Get feedbacks of a user
+    Получения списка отзывов (для кандидата и наставника)
     """
 
     db_feedbacks: list[models.Feedback] | None = None
@@ -53,6 +53,9 @@ async def create_feedback(
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
 ) -> schemas.Feedback:
+    """
+    Создание отзыва (для кандидата и наставника)
+    """
     target = crud.get_user(db, feedback_data.target_id)
     if target is None:
         raise HTTPException(
@@ -76,5 +79,8 @@ async def delete_feedback(
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
 ):
+    """
+    Просмотр записи отзыва (для кандидата и наставника)
+    """
     crud.delete_feedback(db, db_user, feedback_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -25,6 +25,9 @@ async def create_application(
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
 ) -> schemas.InternApplication:
+    """
+    Создание заявки на участие в проекте (для кандидата)
+    """
     intern_application = verify(
         schemas.InternApplication(
             id=db_user.id, status="unverified", **intern_application_data.dict()
@@ -36,22 +39,13 @@ async def create_application(
     return schemas.InternApplication.from_orm(db_application)
 
 
-# @router.put("/my", response_model=schemas.InternApplication)
-# async def update_application(
-#     intern_application: schemas.InternApplication,
-#     db: Session = Depends(get_db),
-#     db_user: models.User = Depends(current_user),
-# ) -> schemas.InternApplication:
-#     intern_application = verify(application_data, db_user)
-#     db_application = crud.update_intern_application(db, db_user, application_data)
-
-#     return schemas.InternApplication.from_orm(db_application)
-
-
 @router.get("/my")
 async def get_application(
     db_user: models.User = Depends(current_user),
 ):
+    """
+    Просмотр заполненной заявки (для кандидата)
+    """
     db_application: models.InternApplication | None = crud.get_intern_application(
         db_user
     )
@@ -70,6 +64,9 @@ async def get_stats(
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
 ):  # -> dict[str, int]:
+    """
+    Получение статистики по заявкам (для куратора)
+    """
     if not db_user.role == UserRole.curator:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     try:
@@ -77,37 +74,6 @@ async def get_stats(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=e)
     return {x[0]: x[1] for x in data}
-    # return {"status": "not ok"}
-
-
-# https://www.chartjs.org/docs/latest/charts/bar.html
-# const labels = Utils.months({count: 7});
-# const data = {
-#   labels: labels,
-#   datasets: [{
-#     label: 'My First Dataset',
-#     data: [65, 59, 80, 81, 56, 55, 40],
-#     backgroundColor: [
-#       'rgba(255, 99, 132, 0.2)',
-#       'rgba(255, 159, 64, 0.2)',
-#       'rgba(255, 205, 86, 0.2)',
-#       'rgba(75, 192, 192, 0.2)',
-#       'rgba(54, 162, 235, 0.2)',
-#       'rgba(153, 102, 255, 0.2)',
-#       'rgba(201, 203, 207, 0.2)'
-#     ],
-#     borderColor: [
-#       'rgb(255, 99, 132)',
-#       'rgb(255, 159, 64)',
-#       'rgb(255, 205, 86)',
-#       'rgb(75, 192, 192)',
-#       'rgb(54, 162, 235)',
-#       'rgb(153, 102, 255)',
-#       'rgb(201, 203, 207)'
-#     ],
-#     borderWidth: 1
-#   }]
-# };
 
 
 @router.get("/all", response_model=list[schemas.InternApplication] | None)
@@ -119,7 +85,14 @@ async def get_all_intern_applications(
     db_user: models.User = Depends(current_user),
 ) -> list[schemas.InternApplication] | None:
     """
-    Get all verified intern applications (curator only)
+    Получение списка заявок по статусу:
+
+    intern_application_status:
+    verified - прошедшие автоматическую проверку
+    unverified - не прошедшие автоматическую проверку
+    approved - одобренные куратором
+    rejected - отклоненные куратором
+
     """
     if not db_user.role == UserRole.curator:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
@@ -144,7 +117,7 @@ async def get_intern_application_by_id(
     db_user: models.User = Depends(current_user),
 ) -> schemas.InternApplication | None:
     """
-    Get intern application by id (curator only)
+    Получение заявки по id (для куратора)
     """
     log.debug(f"get_intern_application_by_id: {id} by {db_user}")
     if not db_user.role == UserRole.curator.value:
@@ -169,7 +142,7 @@ async def approve_intern_application(
     db_user: models.User = Depends(current_user),
 ):
     """
-    Approve intern application by id (curator only)
+    Одобрение заявки (для куратора)
     """
     if not db_user.role == UserRole.curator.value:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
