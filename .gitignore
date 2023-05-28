@@ -1,3 +1,6 @@
+tests/
+static/
+dev/
 .vscode/
 *.sql
 

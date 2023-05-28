@@ -1,7 +1,14 @@
 from typing import Any, Dict, List, Optional, Union
 from os import path
 
-from pydantic import AnyHttpUrl, BaseSettings, PostgresDsn, validator, FilePath
+from pydantic import (
+    AnyHttpUrl,
+    BaseSettings,
+    PostgresDsn,
+    validator,
+    FilePath,
+    EmailStr,
+)
 from jose import constants
 
 
@@ -10,6 +17,7 @@ class Settings(BaseSettings):
     DOCKER_MODE: bool = False
     PROJECT_NAME: str
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
+    DOMAIN: str = "0.0.0.0:8000"
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
@@ -51,6 +59,11 @@ class Settings(BaseSettings):
         return v
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    SERVICE_MAIL_USER: EmailStr
+    SERVICE_MAIL_PASSWORD: str
+    SERVICE_MAIL_HOST: str = "smtp.mail.ru"
+    SERVICE_MAIL_PORT: int = 587
 
     class Config:
         case_sensitive = True
