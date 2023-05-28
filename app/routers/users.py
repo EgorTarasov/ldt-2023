@@ -1,5 +1,14 @@
 from typing import Annotated
-from fastapi import APIRouter, Cookie, Depends, status, Response, Request, Body
+from fastapi import (
+    APIRouter,
+    Cookie,
+    Depends,
+    status,
+    Response,
+    Request,
+    Body,
+    HTTPException,
+)
 from sqlalchemy.orm import Session
 from app.data import crud, models, schemas
 from app.dependencies import get_db, current_user
@@ -38,15 +47,17 @@ async def create_user(
     """
     request.client.host - получить ip адрес
     """
-    db_user: models.User = crud.create_user(db, auth.get_hashed_user(user_data))
+    try:
+        db_user: models.User = crud.create_user(db, auth.get_hashed_user(user_data))
 
-    response.set_cookie(
-        key="access_token",
-        value=auth.create_access_token(data={"sub": user_data.email}),
-        httponly=True,
-        max_age=60 * 60 * 24 * 30,
-    )
-
+        response.set_cookie(
+            key="access_token",
+            value=auth.create_access_token(data={"sub": user_data.email}),
+            httponly=True,
+            max_age=60 * 60 * 24 * 30,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     return schemas.User.from_orm(db_user)
 
 

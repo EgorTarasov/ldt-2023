@@ -139,7 +139,7 @@ class Event(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String)
-    start_time: Mapped[datetime.datetime] = mapped_column(DateTime)
+    start_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     max_score: Mapped[int] = mapped_column(Integer)
 
     scores = relationship("EventScore", back_populates="event")
@@ -363,8 +363,6 @@ class Mailing(Base):
     sender_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     target_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     time_sent: Mapped[datetime.datetime] = mapped_column(DateTime)
-    subject: Mapped[str] = mapped_column(String)
-    message: Mapped[str] = mapped_column(String)
 
     sender = relationship(
         "User", back_populates="sent_mailings", primaryjoin="User.id==Mailing.sender_id"

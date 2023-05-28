@@ -54,11 +54,11 @@ class UserBase(BaseModel):
     birthday: date
     vk: Optional[AnyHttpUrl] = None
     telegram: Optional[AnyHttpUrl] = None
+    role: Optional[str] = "candidate"
 
 
 class UserCreate(UserBase):
     password: str
-    role: Optional[str]
 
     class Config:
         schema_extra = {
@@ -119,7 +119,6 @@ class User(UserBase):
     last_access: datetime
     last_ip: str
     active: bool
-    role: Optional[str]
 
     class Config:
         orm_mode = True
@@ -523,37 +522,14 @@ class StudentTrackInfo(BaseModel):
 # region Mailing
 
 
-class MailingBase(BaseModel):
-    subject: str
-    message: str
-    time_sent: datetime = datetime.now()
-
-
-class MailingCreate(MailingBase):
-    class Config:
-        schema_extra = {
-            "example": {
-                "subject": "Тема письма",
-                "message": "Сообщение",
-            },
-        }
-
-
-class Mailing(MailingBase):
+class Mailing(BaseModel):
     id: Optional[int | None] = None
     sender_id: int
     target_id: int
+    time_sent: datetime = datetime.now()
 
     class Config:
         orm_mode = True
-        schema_extra = {
-            "example": {
-                "subject": "Тема письма",
-                "message": "Сообщение",
-                "sender_id": 1,
-                "target_id": 2,
-            }
-        }
 
 
 # endregion Mailing

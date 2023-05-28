@@ -26,6 +26,8 @@ def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[models.User]
 
 
 def create_user(db: Session, user: schemas.UserCreateHashed) -> models.User:
+    if get_user_by_email(db, user.email):
+        raise Exception("User already exists")
     db_user = models.User(**user.dict())
     db.add(db_user)
     db.commit()
@@ -541,16 +543,35 @@ def delete_vacancy(db: Session, vacancy_id: int):
 # region Mailing
 
 
+def create_mailing_links(
+    db: Session, links_data: dict[str, str]
+) -> list[models.ExternalServiceLink]:
+    db_links = []
+    for title, link in links_data.items():
+        db_link = models.ExternalServiceLink(title=title, link=link)
+        db.add(db_link)
+        db.refresh(db_link)
+        db_links.append(db_link)
+    db.commit()
+    return db_links
+
+
+def get_mailing_link(
+    db: Session, title: str, creator: models.User
+) -> models.ExternalServiceLink | None:
+
+    return (db.query(models.ExternalServiceLink)
+        .filter(models.ExternalServiceLink.title == title)
+        .filter(models.ExternalServiceLink.creator_id == creator.id)
+        .one_or_none())
+
+
 def create_mailing(
     db: Session,
-    mailing: schemas.MailingCreate,
     sender: models.User,
     target: models.User,
 ) -> models.Mailing:
-    db_mailing = models.Mailing(**mailing.dict(exclude={"target_email"}))
-
-    db_mailing.sender = sender
-    db_mailing.target = target
+    db_mailing = models.Mailing(sender_id=sender.id, target_id=target.id)
 
     db.add(db_mailing)
     db.commit()
@@ -608,17 +629,22 @@ def create_students_events_scores(
         if db_student is None:
             raise Exception("Student not found")
         db_scores = []
-        for event in events:
+        for index, event in enumerate(events):
             db_event = (
                 db.query(models.Event)
                 .filter(models.Event.title == event.title)
                 .one_or_none()
             )
             if db_event is None:
-                raise Exception("Event not found")
+                db_event = create_event(db, event)
+                # raise Exception("Event not found")
 
             db_scores.append(
-                models.EventScore(user_id=db_student.id, event_id=db_event.id)
+                models.EventScore(
+                    user_id=db_student.id,
+                    event_id=db_event.id,
+                    score=student.scores[index],
+                )
             )
         db.add_all(db_scores)
         db.commit()
