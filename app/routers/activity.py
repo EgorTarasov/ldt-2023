@@ -57,7 +57,7 @@ async def get_events(
     )
 
 
-@router.get("/events/scores", response_model=list[schemas.EventScore] | None)
+@router.get("/scores", response_model=list[schemas.EventScore] | None)
 async def get_events_scores(
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
@@ -74,16 +74,23 @@ async def get_events_scores(
     if db_events_scores is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    return [schemas.EventScore.from_orm(db_event_score) for db_event_score in db_events_scores] if db_events_scores else None
+    return (
+        [
+            schemas.EventScore.from_orm(db_event_score)
+            for db_event_score in db_events_scores
+        ]
+        if db_events_scores
+        else None
+    )
 
 
-@router.get("/candidates")
+@router.get("/candidates/all", response_model=list[schemas.CandidateActivity] | None)
 async def get_candidates_activity(
     db: Session = Depends(get_db),
     db_user: models.User = Depends(current_user),
     offset: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-):
+) -> list[schemas.CandidateActivity] | None:
     """
     Получение данных о всех кандидатах (для куратора)
     """
@@ -94,23 +101,39 @@ async def get_candidates_activity(
     if db_candidates_scores is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    return {candidate[1]: {"id": candidate[0], "score": candidate[2], "max_score": candidate[3]} for candidate in db_candidates_scores}
+    return (
+        [
+            schemas.CandidateActivity(**{
+                "user_id": db_candidate_score[0],
+                "overall_score": db_candidate_score[1],
+                "max_score": db_candidate_score[2],
+            })
+            for db_candidate_score in db_candidates_scores
+        ]
+        if db_candidates_scores
+        else None
+    )
 
 
-@router.get("/cadidates/{candidate_id}")
-async def get_candidate_activity_by_id(
-    candidate_id: int = Path(..., ge=1),
-    db: Session = Depends(get_db),
-    db_user: models.User = Depends(current_user),
-):
-    """
-    Получение данных о конкретном кандидате (для куратора)
-    """
-    if db_user.role != UserRole.curator:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+# @router.get("/cadidates/{candidate_id}", response_model=list[schemas.CandidateActivity] | None)
+# async def get_candidate_activity_by_id(
+#     candidate_id: int = Path(..., ge=1),
+#     db: Session = Depends(get_db),
+#     db_user: models.User = Depends(current_user),
+# ) -> list[schemas.CandidateActivity] | None:
+#     """
+#     Получение данных о конкретном кандидате (для куратора)
+#     """
+#     if db_user.role != UserRole.curator:
+#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
-    db_candidate_score = crud.get_candidate_score_by_id(db, candidate_id)
-    if db_candidate_score is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+#     db_candidate_score = crud.get_candidate_score_by_id(db, candidate_id)
+#     if db_candidate_score is None:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    return [{"event_id": score[0], "event_title": score[1], "score": score[2], "max_score": score[3]} for score in db_candidate_score]
+#     return [
+#         schemas.CandidateActivity(**{
+#             "user_id": db_candidate_score[0],
+            
+#         }) for event in db_candidate_score
+#     ]

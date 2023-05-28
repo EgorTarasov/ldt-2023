@@ -644,32 +644,29 @@ def get_events(db: Session, limit: int, offset: int) -> list[models.Event] | Non
 def get_events_scores(
     db: Session, db_user: models.User, limit: int, offset: int
 ) -> list[models.EventScore] | None:
-    return (
+    db_data = (
         db.query(models.EventScore)
         .filter(models.EventScore.user_id == db_user.id)
         .offset(offset)
         .limit(limit)
         .all()
     )
-
-
-def get_education_track_max_score(db: Session):
-    # return sum of all event max scores
-    return db.query(func.sum(models.Event.max_score)).one()[0]
+    log.debug(f"events scores: {db_data}")
+    return db_data
 
 
 def get_candidates_scores(db: Session, limit: int, offset: int):
     # get all event scores and max_score for all events grouped by user id and fio
     db_data = (
         db.query(
-            models.User.id,
-            models.User.fio,
+            models.User.id.label("user_id"),
+            # models.User.fio,
             func.sum(models.EventScore.score).label("score"),
-            db.query(func.sum(models.Event.max_score)).one()[0],
+            db.query(func.sum(models.Event.max_score).label("max_score")).one()[0],
         )
         .join(models.EventScore.user)
         .join(models.EventScore.event)
-        .group_by(models.User.id, models.User.fio)
+        .group_by(models.User.id)
         .offset(offset)
         .limit(limit)
         .all()
@@ -681,19 +678,31 @@ def get_candidates_scores(db: Session, limit: int, offset: int):
 
 def get_candidate_score_by_id(db: Session, candidate_id: int):
     # get event scores for candidate by id
+    # db_data = (
+    #     db.query(
+    #         models.Event.id,
+    #         models.EventScore.score,
+    #         models.Event.max_score,
+    #     )
+    #     .join(models.EventScore.user)
+    #     .join(models.EventScore.event)
+    #     .filter(models.User.id == candidate_id)
+    #     .all()
+    # )
     db_data = (
         db.query(
-            models.Event.id,
-            models.Event.title,
-            models.EventScore.score,
-            models.Event.max_score,
+            models.User.id.label("user_id"),
+            # models.User.fio,
+            func.sum(models.EventScore.score).label("score"),
+            db.query(func.sum(models.Event.max_score).label("max_score")).one()[0],
         )
+        .filter(models.User.id == candidate_id)
         .join(models.EventScore.user)
         .join(models.EventScore.event)
-        .filter(models.User.id == candidate_id)
+        .group_by(models.User.id)
         .all()
     )
-    
+
     log.debug(f"candidate score: {db_data}")
     return db_data
 

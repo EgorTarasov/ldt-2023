@@ -411,7 +411,6 @@ class MentorBase(BaseModel):
 
 
 class MentorCreate(MentorBase):
-
     class Config:
         schema_extra = {
             "example": {
@@ -535,14 +534,21 @@ class StudentTrackInfo(BaseModel):
     fio: str
     course: str
     scores: list[int]
-    
+
+
 class EventScore(BaseModel):
-    title: str
+    user_id: int
     event_id: int
     score: int
-    
+
     class Config:
         orm_mode = True
+
+
+class CandidateActivity(BaseModel):
+    user_id: int
+    overall_score: int
+    max_score: int
 
 
 # endregion Event
