@@ -19,7 +19,7 @@ def create_app():
     # Set all CORS enabled origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=["https://larek.itatmisis.ru", "http://localhost:3000"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

@@ -28,6 +28,24 @@ get get_user
 post update_user
 """
 
+access_cookie_params = {
+    "key": "access_token",
+    "value": None,
+    "secure": True,
+    "samesite": "none",
+    "httponly": True,
+    "max_age": 60 * 60 * 24 * 30,
+}
+
+refresh_cookie_params = {
+    "key": "refresh_token",
+    "value": None,
+    "secure": True,
+    "samesite": "none",
+    "httponly": True,
+    "max_age": 60 * 60 * 24 * 30,
+}
+
 
 @router.post(
     "/",
@@ -49,14 +67,9 @@ async def create_user(
     """
     try:
         db_user: models.User = crud.create_user(db, auth.get_hashed_user(user_data))
-
-        response.set_cookie(
-            key="access_token",
-            value=auth.create_access_token(data={"sub": user_data.email}),
-            httponly=False,
-            max_age=60 * 60 * 24 * 30,
-            samesite="none",
-        )
+        access_cookie = access_cookie_params.copy()
+        access_cookie["value"] = auth.create_access_token(data={"sub": user_data.email})
+        response.set_cookie(**access_cookie)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     return schemas.User.from_orm(db_user)
@@ -72,24 +85,18 @@ async def login(
     db: Annotated[Session, None] = Depends(get_db),
 ) -> schemas.User:
     auth.authenticate_user(db, user_data)
-    access_token = auth.create_access_token(data={"sub": user_data.email})
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=False,
-        max_age=60 * 60 * 24 * 30,
-        samesite="none",
-    )
+
+    access_cookie = access_cookie_params.copy()
+    access_cookie["value"] = auth.create_access_token(data={"sub": user_data.email})
+    response.set_cookie(**access_cookie)
+    response.set_cookie(**access_cookie)
 
     if user_data.stay_loggedin:
-        refresh_token = auth.create_refresh_token(data={"sub": user_data.email})
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=False,
-            max_age=60 * 60 * 24 * 30,
-            samesite="none",
+        refresh_cookie = refresh_cookie_params.copy()
+        refresh_cookie["value"] = auth.create_refresh_token(
+            data={"sub": user_data.email}
         )
+        response.set_cookie(**refresh_cookie)
 
     db_user = crud.get_user_by_email(db, user_data.email)
     return schemas.User.from_orm(db_user)
@@ -102,14 +109,14 @@ async def logout(
     access_token: str | None = Cookie(None),
 ):
     response.delete_cookie(
-        key="refresh_token",
-        httponly=False,
-        samesite="none",
+        key="access_token",
+        httponly=access_cookie_params["httponly"],
+        samesite=access_cookie_params["samesite"],
     )
     response.delete_cookie(
-        key="access_token",
-        httponly=False,
-        samesite="none",
+        key="refresh_token",
+        httponly=refresh_cookie_params["httponly"],
+        samesite=refresh_cookie_params["samesite"],
     )
     return {"message": "logout success"}
 
